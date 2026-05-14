@@ -49,6 +49,9 @@ dist-ssr/
 .pnp.*
 *.local
 
+# Dotenv
+.env*
+
 # IDEs
 .idea/
 *.iws
