@@ -1,3 +1,67 @@
 spring:
   application:
-    name: erp
+    name: widuri-erp
+  profiles:
+    # Secara bawaan saat dijalankan lokal akan menggunakan profile 'dev'
+    active: dev
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: 8080
+
+---
+# ==============================================================================
+# PROFILE: DEVELOPMENT (Lokal)
+# ==============================================================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    show-sql: true
+    hibernate:
+      # Sangat diharamkan pakai 'update' di Production.
+      # Kita pakai 'validate' karena struktur tabel diatur penuh oleh Flyway.
+      ddl-auto: validate
+    properties:
+      "[hibernate.format_sql]": true
+
+  flyway:
+    enabled: true
+    # Jika tabel ada yang dibuat manual, flyway akan tetap berjalan aman
+    baseline-on-migrate: true
+
+logging:
+  level:
+    '[org.hibernate.SQL]': debug
+    '[org.springframework.web]': info
+
+---
+# ==============================================================================
+# PROFILE: PRODUCTION (Live Server)
+# ==============================================================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    # Di Production, nilai Wajib diambil dari Environment Variables OS/Docker
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    root: warn
+    '[id.my.mfikriproject.widuri]': info
