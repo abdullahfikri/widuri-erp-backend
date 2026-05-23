@@ -1,13 +1,13 @@
 package id.my.mfikriproject.widuri.erp.modules.sales.enums;
 
-public enum PaymentMethod {
+public enum PaymentMethodEnum {
     CASH("Cash"),
     QRIS("QRIS"),
-    TRANSFER("Transfer"),;
+    TRANSFER("Transfer");
 
     private final String dbValue;
 
-    private PaymentMethod(String dbValue) {
+    private PaymentMethodEnum(String dbValue) {
         this.dbValue = dbValue;
     }
 
@@ -15,11 +15,11 @@ public enum PaymentMethod {
         return dbValue;
     }
 
-    public static PaymentMethod fromDbValue(String dbValue) {
-        for (PaymentMethod paymentMethod : PaymentMethod.values()) {
+    public static PaymentMethodEnum fromDbValue(String dbValue) {
+        for (PaymentMethodEnum paymentMethod : PaymentMethodEnum.values()) {
             if (paymentMethod.getDbValue().equals(dbValue)) return paymentMethod;
         }
 
-        throw new IllegalArgumentException("Unknown payment method: " + dbValue);
+        throw new IllegalArgumentException("Unknown payment method stored in database");
     }
 }
