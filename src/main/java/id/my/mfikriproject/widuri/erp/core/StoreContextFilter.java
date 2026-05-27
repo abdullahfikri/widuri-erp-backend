@@ -20,7 +20,14 @@ import java.nio.charset.StandardCharsets;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @Slf4j
 @RequiredArgsConstructor
-public class StoreContextFilter implements Filter {
+public class StoreContextFilter extends OncePerRequestFilter {
+
+    private final ObjectMapper objectMapper;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        String header = request.getHeader("X-Store-Id");
 
     private final ObjectMapper objectMapper;
 
