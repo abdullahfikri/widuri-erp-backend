@@ -27,9 +27,16 @@ public class StoreContextFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
-        String header = ((HttpServletRequest) request).getHeader("X-Store-Id");
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        String header = httpRequest.getHeader("X-Store-Id");
+        boolean isApiPath = httpRequest.getRequestURI().startsWith("/api/");
 
         if (header == null) {
+            if (isApiPath) {
+                log.warn("Missing X-Store-Id header on API path: {}", httpRequest.getRequestURI());
+                sendError(response, "MISSING_STORE_ID", "X-Store-Id header is required for API endpoints");
+                return;
+            }
             chain.doFilter(request, response);
             return;
         }
@@ -39,13 +46,13 @@ public class StoreContextFilter implements Filter {
             storeId = Integer.parseInt(header);
         } catch (NumberFormatException _) {
             log.warn("Invalid X-Store-Id header: '{}'", header);
-            sendError(response, "INVALID_STORE_ID");
+            sendError(response, "INVALID_STORE_ID", "X-Store-Id must be a valid integer");
             return;
         }
 
         if (storeId <= 0) {
             log.warn("Non-positive X-Store-Id header: {}", storeId);
-            sendError(response, "INVALID_STORE_ID");
+            sendError(response, "INVALID_STORE_ID", "X-Store-Id must be a positive integer");
             return;
         }
 
@@ -61,11 +68,11 @@ public class StoreContextFilter implements Filter {
         }
     }
 
-    private void sendError(ServletResponse response, String errorCode) throws IOException {
+    private void sendError(ServletResponse response, String code, String message) throws IOException {
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         httpResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         httpResponse.setContentType(MediaType.APPLICATION_JSON_VALUE);
         httpResponse.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        objectMapper.writeValue(httpResponse.getWriter(), ErrorResponse.of(400, errorCode));
+        objectMapper.writeValue(httpResponse.getWriter(), ErrorResponse.of(code, message));
     }
 }

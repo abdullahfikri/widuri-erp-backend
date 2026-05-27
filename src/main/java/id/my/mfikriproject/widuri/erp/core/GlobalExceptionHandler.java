@@ -1,4 +1,4 @@
-package id.my.mfikriproject.widuri.erp.core;
+package id.my.mfikriproject.widuri.erp.core.exception;
 
 import id.my.mfikriproject.widuri.erp.core.dto.ErrorResponse;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
         List<String> details = ex.getBindingResult().getFieldErrors().stream()
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .toList();
-        return new ErrorResponse(400, "VALIDATION_FAILED", details);
+        return ErrorResponse.of(400, "VALIDATION_FAILED", details);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
