@@ -45,7 +45,7 @@ public class StoreContextFilter extends OncePerRequestFilter {
         try {
             storeId = Integer.parseInt(header.strip());
         } catch (NumberFormatException _) {
-            log.warn("Invalid X-Store-Id header: '{}'", header);
+            log.warn("Invalid X-Store-Id header: '{}'", header.replaceAll("[\r\n]", "_"));
             sendError(response, "INVALID_STORE_ID");
             return;
         }
