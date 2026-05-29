@@ -7,10 +7,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -20,20 +22,19 @@ import java.nio.charset.StandardCharsets;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @Slf4j
 @RequiredArgsConstructor
-public class StoreContextFilter implements Filter {
+public class StoreContextFilter extends OncePerRequestFilter {
 
     private final ObjectMapper objectMapper;
 
     @Override
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+    protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain)
             throws IOException, ServletException {
-        HttpServletRequest httpRequest = (HttpServletRequest) request;
-        String header = httpRequest.getHeader("X-Store-Id");
-        boolean isApiPath = httpRequest.getRequestURI().startsWith("/api/");
+        String header = request.getHeader("X-Store-Id");
+        boolean isApiPath = request.getRequestURI().startsWith("/api/");
 
         if (header == null) {
             if (isApiPath) {
-                log.warn("Missing X-Store-Id header on API path: {}", httpRequest.getRequestURI());
+                log.warn("Missing X-Store-Id header on API path: {}", request.getRequestURI());
                 sendError(response, "MISSING_STORE_ID", "X-Store-Id header is required for API endpoints");
                 return;
             }
@@ -43,9 +44,9 @@ public class StoreContextFilter implements Filter {
 
         int storeId;
         try {
-            storeId = Integer.parseInt(header);
+            storeId = Integer.parseInt(header.strip());
         } catch (NumberFormatException _) {
-            log.warn("Invalid X-Store-Id header: '{}'", header);
+            log.warn("Invalid X-Store-Id header: '{}'", header.replaceAll("[\r\n]", "_"));
             sendError(response, "INVALID_STORE_ID", "X-Store-Id must be a valid integer");
             return;
         }
