@@ -7,6 +7,11 @@ spring:
   threads:
     virtual:
       enabled: true
+  jackson:
+    datatype:
+      datetime:
+        write-dates-as-timestamps: false
+        write-durations-as-timestamps: false
 
 app:
   api-path-prefix: /api/
