@@ -18,6 +18,19 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Create MCP config
+        run: |
+          cat > /tmp/mcp-config.json << 'EOF'
+          {
+            "mcpServers": {
+              "context7": {
+                "command": "npx",
+                "args": ["-y", "@upstash/context7-mcp@latest"]
+              }
+            }
+          }
+          EOF
+
       - name: Run Claude Code Review
         uses: anthropics/claude-code-action@v1
         with:
@@ -34,8 +47,13 @@ jobs:
             4. Kesesuaian dengan arsitektur proyek (modular monolith Spring Boot, module isolation rule, virtual threads, Flyway)
             5. Kelengkapan test coverage
 
+            Jika perlu memverifikasi penggunaan library/framework (Spring Boot, Java, Flyway, dll.),
+            gunakan context7 (mcp__context7__resolve-library-id + mcp__context7__query-docs)
+            untuk mendapatkan dokumentasi terkini sebelum memberi penilaian.
+
             Gunakan inline comment untuk isu spesifik di baris kode.
             Gunakan top-level comment untuk observasi umum.
 
           claude_args: |
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+            --mcp-config /tmp/mcp-config.json
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,mcp__context7__resolve-library-id,mcp__context7__query-docs,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
