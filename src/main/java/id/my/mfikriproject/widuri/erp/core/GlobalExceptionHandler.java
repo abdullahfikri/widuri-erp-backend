@@ -41,6 +41,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EntityNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleEntityNotFound(EntityNotFoundException ex) {
+        // ex.getMessage() diteruskan by design — kontrak EntityNotFoundException menjamin pesannya aman untuk client
         return ErrorResponse.of("ENTITY_NOT_FOUND", ex.getMessage());
     }
 
