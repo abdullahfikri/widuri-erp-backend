@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
@@ -25,12 +26,17 @@ import java.nio.charset.StandardCharsets;
 public class StoreContextFilter extends OncePerRequestFilter {
 
     private final ObjectMapper objectMapper;
+    @Value("${app.api-path-prefix:/api/}")
+    String apiPathPrefix;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain)
             throws IOException, ServletException {
         String header = request.getHeader("X-Store-Id");
-        boolean isApiPath = request.getRequestURI().startsWith("/api/");
+
+
+
+        boolean isApiPath = request.getRequestURI().startsWith(apiPathPrefix);
 
         if (header == null) {
             if (isApiPath) {
