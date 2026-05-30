@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
     public ErrorResponse handleIllegalArgument(IllegalArgumentException ex) {
         // Pesan error sengaja tidak menyertakan ex.getMessage() — bisa mengandung nilai raw dari DB
-        return ErrorResponse.of("INVALID_INPUT", " request contains invalid or unprocessable data");
+        return ErrorResponse.of("INVALID_INPUT", "Request contains invalid or unprocessable data");
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
