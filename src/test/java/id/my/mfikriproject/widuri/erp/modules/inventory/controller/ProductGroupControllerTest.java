@@ -1,7 +1,7 @@
 package id.my.mfikriproject.widuri.erp.modules.inventory.controller;
 
 import id.my.mfikriproject.widuri.erp.core.config.WebMvcConfig;
-import id.my.mfikriproject.widuri.erp.modules.inventory.ProductGroupService;
+import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductGroupService;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
