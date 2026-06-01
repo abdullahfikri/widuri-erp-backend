@@ -1,9 +1,10 @@
 package id.my.mfikriproject.widuri.erp.modules.inventory;
 
+import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse;
 import id.my.mfikriproject.widuri.erp.modules.inventory.entity.ProductGroupModel;
 import id.my.mfikriproject.widuri.erp.modules.inventory.repository.ProductGroupRepository;
-import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductGroupService;
+import id.my.mfikriproject.widuri.erp.modules.inventory.service.impl.ProductGroupServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -12,8 +13,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -25,7 +28,7 @@ class ProductGroupServiceTest {
     private ProductGroupRepository repository;
 
     @InjectMocks
-    private ProductGroupService service;
+    private ProductGroupServiceImpl service;
 
     @Test
     void findAll_delegatesToRepositoryWithSamePageable() {
@@ -83,4 +86,47 @@ class ProductGroupServiceTest {
         assertThat(result.getTotalElements()).isEqualTo(30);
         assertThat(result.getTotalPages()).isEqualTo(6);
     }
+
+    @Test
+    void findById_found_returnsCorrectResponse() {
+        ProductGroupModel model = mock(ProductGroupModel.class);
+        given(model.getId()).willReturn(1L);
+        given(model.getName()).willReturn("Joran Shimano");
+        given(model.getBrand()).willReturn("Shimano");
+        given(model.getCategory()).willReturn("Rod");
+        given(model.getDescription()).willReturn("Joran spinning Shimano");
+        given(model.getCreatedAt()).willReturn(null);
+        given(model.getUpdatedAt()).willReturn(null);
+        given(repository.findById(1L)).willReturn(Optional.of(model));
+
+        ProductGroupResponse result = service.findById(1L);
+
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.name()).isEqualTo("Joran Shimano");
+        assertThat(result.brand()).isEqualTo("Shimano");
+        assertThat(result.category()).isEqualTo("Rod");
+        assertThat(result.description()).isEqualTo("Joran spinning Shimano");
+    }
+
+    @Test
+    void findById_delegatesToRepositoryWithId() {
+        ProductGroupModel model = mock(ProductGroupModel.class);
+        given(model.getCreatedAt()).willReturn(null);
+        given(model.getUpdatedAt()).willReturn(null);
+        given(repository.findById(42L)).willReturn(Optional.of(model));
+
+        service.findById(42L);
+
+        verify(repository).findById(42L);
+    }
+
+    @Test
+    void findById_notFound_throwsEntityNotFoundException() {
+        given(repository.findById(99L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.findById(99L))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+
 }

@@ -1,15 +1,19 @@
 package id.my.mfikriproject.widuri.erp.modules.inventory.controller;
 
 import id.my.mfikriproject.widuri.erp.core.config.WebMvcConfig;
-import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductGroupService;
+import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse;
+import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductGroupService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
@@ -110,6 +114,40 @@ class ProductGroupControllerTest {
                 .bodyJson()
                 .extractingPath("$.code")
                 .asString().isEqualTo("INVALID_STORE_ID");
+    }
+
+    @Test
+    void findById_found_returns200WithBody() {
+        ProductGroupResponse response = new ProductGroupResponse(1L, "Joran Test", "Shimano", "Rod", null, null, null);
+        given(productGroupService.findById(1L)).willReturn(response);
+
+        MvcTestResult result = mvc.get().uri(URL + "/1").header(STORE_ID_HEADER, "1").exchange();
+
+        assertThat(result).hasStatusOk();
+        assertThat(result).bodyJson().extractingPath("$.id").asNumber().isEqualTo(1);
+        assertThat(result).bodyJson().extractingPath("$.name").asString().isEqualTo("Joran Test");
+        assertThat(result).bodyJson().extractingPath("$.brand").asString().isEqualTo("Shimano");
+    }
+
+    @Test
+    void findById_notFound_returns404() {
+        given(productGroupService.findById(99L))
+                .willThrow(new EntityNotFoundException("ProductGroup not found"));
+
+        assertThat(mvc.get().uri(URL + "/99").header(STORE_ID_HEADER, "1"))
+                .hasStatus(404)
+                .bodyJson()
+                .extractingPath("$.code")
+                .asString().isEqualTo("ENTITY_NOT_FOUND");
+    }
+
+    @Test
+    void findById_missingStoreIdHeader_returns400() {
+        assertThat(mvc.get().uri(URL + "/1"))
+                .hasStatus(400)
+                .bodyJson()
+                .extractingPath("$.code")
+                .asString().isEqualTo("MISSING_STORE_ID");
     }
 
     @Test
