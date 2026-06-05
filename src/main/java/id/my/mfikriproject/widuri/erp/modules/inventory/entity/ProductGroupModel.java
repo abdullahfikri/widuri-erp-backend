@@ -13,7 +13,13 @@ import java.util.List;
 @SuperBuilder
 @NoArgsConstructor
 @Entity
-@Table(name = "m_product_group")
+@Table(
+        name = "m_product_group",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_product_group_name_brand",
+                columnNames = {"name", "brand"}
+        )
+)
 public class ProductGroupModel extends AuditableModel {
 
     @Id

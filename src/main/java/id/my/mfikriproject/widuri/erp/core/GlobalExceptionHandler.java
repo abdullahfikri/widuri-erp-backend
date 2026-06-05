@@ -1,6 +1,7 @@
 package id.my.mfikriproject.widuri.erp.core;
 
 import id.my.mfikriproject.widuri.erp.core.dto.ErrorResponse;
+import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -36,6 +37,13 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleDataIntegrity(DataIntegrityViolationException ex) {
         return ErrorResponse.of("DATA_CONFLICT", "Data conflict or duplicate entry");
+    }
+
+    @ExceptionHandler(DuplicateEntityException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleDuplicate(DuplicateEntityException ex) {
+        // ex.getMessage() diteruskan by design — kontrak DuplicateEntityException menjamin pesannya aman untuk client
+        return ErrorResponse.of("DUPLICATE_ENTITY", ex.getMessage());
     }
 
     @ExceptionHandler(EntityNotFoundException.class)

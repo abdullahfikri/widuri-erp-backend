@@ -1,12 +1,15 @@
 package id.my.mfikriproject.widuri.erp.modules.inventory;
 
+import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
+import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse;
 import id.my.mfikriproject.widuri.erp.modules.inventory.entity.ProductGroupModel;
 import id.my.mfikriproject.widuri.erp.modules.inventory.repository.ProductGroupRepository;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.impl.ProductGroupServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,9 +20,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
+
 
 @ExtendWith(MockitoExtension.class)
 class ProductGroupServiceTest {
@@ -128,5 +132,114 @@ class ProductGroupServiceTest {
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
+    @Test
+    void create_withBrand_returnsResponseWithAllFields() {
+        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", "Shimano", "Reel", "Deskripsi");
+        given(repository.existsByNameAndBrand("Reel Spinning", "Shimano")).willReturn(false);
+        ProductGroupModel saved = mock(ProductGroupModel.class);
+        given(saved.getId()).willReturn(1L);
+        given(saved.getName()).willReturn("Reel Spinning");
+        given(saved.getBrand()).willReturn("Shimano");
+        given(saved.getCategory()).willReturn("Reel");
+        given(saved.getDescription()).willReturn("Deskripsi");
+        given(saved.getCreatedAt()).willReturn(null);
+        given(saved.getUpdatedAt()).willReturn(null);
+        given(repository.save(any())).willReturn(saved);
+
+        ProductGroupResponse result = service.create(request);
+
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.name()).isEqualTo("Reel Spinning");
+        assertThat(result.brand()).isEqualTo("Shimano");
+        assertThat(result.category()).isEqualTo("Reel");
+        assertThat(result.description()).isEqualTo("Deskripsi");
+    }
+
+    @Test
+    void create_withNullBrand_returnsResponseWithNullBrand() {
+        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", null, "Reel", null);
+        given(repository.existsByNameAndBrandIsNull("Reel Spinning")).willReturn(false);
+        ProductGroupModel saved = mock(ProductGroupModel.class);
+        given(saved.getId()).willReturn(2L);
+        given(saved.getName()).willReturn("Reel Spinning");
+        given(saved.getBrand()).willReturn(null);
+        given(saved.getCategory()).willReturn("Reel");
+        given(saved.getDescription()).willReturn(null);
+        given(saved.getCreatedAt()).willReturn(null);
+        given(saved.getUpdatedAt()).willReturn(null);
+        given(repository.save(any())).willReturn(saved);
+
+        ProductGroupResponse result = service.create(request);
+
+        assertThat(result.name()).isEqualTo("Reel Spinning");
+        assertThat(result.brand()).isNull();
+    }
+
+    @Test
+    void create_noDuplicate_persistsEntityWithCorrectFields() {
+        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", "Shimano", "Reel", "Desc");
+        given(repository.existsByNameAndBrand("Reel Spinning", "Shimano")).willReturn(false);
+        ProductGroupModel saved = mock(ProductGroupModel.class);
+        given(saved.getCreatedAt()).willReturn(null);
+        given(saved.getUpdatedAt()).willReturn(null);
+        given(repository.save(any())).willReturn(saved);
+
+        service.create(request);
+
+        ArgumentCaptor<ProductGroupModel> captor = ArgumentCaptor.forClass(ProductGroupModel.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getName()).isEqualTo("Reel Spinning");
+        assertThat(captor.getValue().getBrand()).isEqualTo("Shimano");
+        assertThat(captor.getValue().getCategory()).isEqualTo("Reel");
+        assertThat(captor.getValue().getDescription()).isEqualTo("Desc");
+    }
+
+    @Test
+    void create_withBrand_usesNameAndBrandExistsCheck() {
+        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", "Shimano", null, null);
+        given(repository.existsByNameAndBrand("Reel Spinning", "Shimano")).willReturn(false);
+        ProductGroupModel saved = mock(ProductGroupModel.class);
+        given(saved.getCreatedAt()).willReturn(null);
+        given(saved.getUpdatedAt()).willReturn(null);
+        given(repository.save(any())).willReturn(saved);
+
+        service.create(request);
+
+        verify(repository).existsByNameAndBrand("Reel Spinning", "Shimano");
+        verify(repository, never()).existsByNameAndBrandIsNull(any());
+    }
+
+    @Test
+    void create_withNullBrand_usesNullBrandExistsCheck() {
+        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", null, null, null);
+        given(repository.existsByNameAndBrandIsNull("Reel Spinning")).willReturn(false);
+        ProductGroupModel saved = mock(ProductGroupModel.class);
+        given(saved.getCreatedAt()).willReturn(null);
+        given(saved.getUpdatedAt()).willReturn(null);
+        given(repository.save(any())).willReturn(saved);
+
+        service.create(request);
+
+        verify(repository).existsByNameAndBrandIsNull("Reel Spinning");
+        verify(repository, never()).existsByNameAndBrand(any(), any());
+    }
+
+    @Test
+    void create_duplicateNameAndBrand_throwsDuplicateEntityException() {
+        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", "Shimano", null, null);
+        given(repository.existsByNameAndBrand("Reel Spinning", "Shimano")).willReturn(true);
+
+        assertThatThrownBy(() -> service.create(request))
+                .isInstanceOf(DuplicateEntityException.class);
+    }
+
+    @Test
+    void create_duplicateNameWithNullBrand_throwsDuplicateEntityException() {
+        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", null, null, null);
+        given(repository.existsByNameAndBrandIsNull("Reel Spinning")).willReturn(true);
+
+        assertThatThrownBy(() -> service.create(request))
+                .isInstanceOf(DuplicateEntityException.class);
+    }
 
 }
