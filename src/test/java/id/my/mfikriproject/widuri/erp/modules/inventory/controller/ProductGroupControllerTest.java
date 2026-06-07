@@ -3,10 +3,12 @@ package id.my.mfikriproject.widuri.erp.modules.inventory.controller;
 import id.my.mfikriproject.widuri.erp.core.config.WebMvcConfig;
 import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.MediaType;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse;
+import id.my.mfikriproject.widuri.erp.modules.inventory.dto.UpdateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductGroupService;
-import org.springframework.http.MediaType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,6 +28,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 @WebMvcTest(ProductGroupController.class)
@@ -151,6 +154,12 @@ class ProductGroupControllerTest {
                 .bodyJson()
                 .extractingPath("$.code")
                 .asString().isEqualTo("MISSING_STORE_ID");
+    }
+
+    @Test
+    void findById_nonNumericId_returns400() {
+        assertThat(mvc.get().uri(URL + "/abc").header(STORE_ID_HEADER, "1"))
+                .hasStatus(400);
     }
 
     @Test
@@ -338,5 +347,118 @@ class ProductGroupControllerTest {
         verify(productGroupService).create(captor.capture());
         // String harus sampai ke service persis seperti yang dikirim — tidak di-strip server
         assertThat(captor.getValue().name()).isEqualTo("<script>alert(1)</script>");
+    }
+
+    @Test
+    void delete_existingId_returns204() {
+        assertThat(mvc.delete().uri(URL + "/1").header(STORE_ID_HEADER, "1"))
+                .hasStatus(204);
+    }
+
+    @Test
+    void delete_notFound_returns404WithCode() {
+        doThrow(new EntityNotFoundException("ProductGroup not found"))
+                .when(productGroupService).delete(99L);
+
+        assertThat(mvc.delete().uri(URL + "/99").header(STORE_ID_HEADER, "1"))
+                .hasStatus(404)
+                .bodyJson().extractingPath("$.code").asString().isEqualTo("ENTITY_NOT_FOUND");
+    }
+
+    @Test
+    void delete_withActiveProducts_returns409WithCode() {
+        doThrow(new DataIntegrityViolationException("FK constraint"))
+                .when(productGroupService).delete(1L);
+
+        assertThat(mvc.delete().uri(URL + "/1").header(STORE_ID_HEADER, "1"))
+                .hasStatus(409)
+                .bodyJson().extractingPath("$.code").asString().isEqualTo("DATA_CONFLICT");
+    }
+
+    @Test
+    void delete_missingStoreIdHeader_returns400() {
+        assertThat(mvc.delete().uri(URL + "/1"))
+                .hasStatus(400)
+                .bodyJson().extractingPath("$.code").asString().isEqualTo("MISSING_STORE_ID");
+    }
+
+    @Test
+    void delete_nonNumericId_returns400() {
+        assertThat(mvc.delete().uri(URL + "/abc").header(STORE_ID_HEADER, "1"))
+                .hasStatus(400);
+    }
+
+    @Test
+    void update_validRequest_returns200WithBody() {
+        ProductGroupResponse response = new ProductGroupResponse(1L, "Reel Baru", "Shimano", "Reel", null, null, null);
+        given(productGroupService.update(any(Long.class), any(UpdateProductGroupRequest.class))).willReturn(response);
+
+        MvcTestResult result = mvc.put().uri(URL + "/1")
+                .header(STORE_ID_HEADER, "1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Reel Baru\",\"brand\":\"Shimano\",\"category\":\"Reel\"}")
+                .exchange();
+
+        assertThat(result).hasStatusOk();
+        assertThat(result).bodyJson().extractingPath("$.id").asNumber().isEqualTo(1);
+        assertThat(result).bodyJson().extractingPath("$.name").asString().isEqualTo("Reel Baru");
+        assertThat(result).bodyJson().extractingPath("$.brand").asString().isEqualTo("Shimano");
+    }
+
+    @Test
+    void update_notFound_returns404WithCode() {
+        given(productGroupService.update(any(Long.class), any(UpdateProductGroupRequest.class)))
+                .willThrow(new EntityNotFoundException("ProductGroup not found"));
+
+        assertThat(mvc.put().uri(URL + "/99")
+                .header(STORE_ID_HEADER, "1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Reel Baru\"}"))
+                .hasStatus(404)
+                .bodyJson().extractingPath("$.code").asString().isEqualTo("ENTITY_NOT_FOUND");
+    }
+
+    @Test
+    void update_duplicate_returns409WithCode() {
+        given(productGroupService.update(any(Long.class), any(UpdateProductGroupRequest.class)))
+                .willThrow(new DuplicateEntityException("ProductGroup already exists"));
+
+        assertThat(mvc.put().uri(URL + "/1")
+                .header(STORE_ID_HEADER, "1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Reel Baru\",\"brand\":\"Shimano\"}"))
+                .hasStatus(409)
+                .bodyJson().extractingPath("$.code").asString().isEqualTo("DUPLICATE_ENTITY");
+    }
+
+    @Test
+    void update_blankName_returns400WithValidationDetails() {
+        MvcTestResult result = mvc.put().uri(URL + "/1")
+                .header(STORE_ID_HEADER, "1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"\"}")
+                .exchange();
+
+        assertThat(result).hasStatus(400);
+        assertThat(result).bodyJson().extractingPath("$.code").asString().isEqualTo("VALIDATION_FAILED");
+        assertThat(result).bodyJson().extractingPath("$.details").asArray().isNotEmpty();
+    }
+
+    @Test
+    void update_missingStoreIdHeader_returns400() {
+        assertThat(mvc.put().uri(URL + "/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Reel Baru\"}"))
+                .hasStatus(400)
+                .bodyJson().extractingPath("$.code").asString().isEqualTo("MISSING_STORE_ID");
+    }
+
+    @Test
+    void update_nonNumericId_returns400() {
+        assertThat(mvc.put().uri(URL + "/abc")
+                .header(STORE_ID_HEADER, "1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Reel Baru\"}"))
+                .hasStatus(400);
     }
 }

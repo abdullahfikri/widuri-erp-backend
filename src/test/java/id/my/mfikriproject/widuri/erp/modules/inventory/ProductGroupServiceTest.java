@@ -4,6 +4,7 @@ import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse;
+import id.my.mfikriproject.widuri.erp.modules.inventory.dto.UpdateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.entity.ProductGroupModel;
 import id.my.mfikriproject.widuri.erp.modules.inventory.repository.ProductGroupRepository;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.impl.ProductGroupServiceImpl;
@@ -240,6 +241,118 @@ class ProductGroupServiceTest {
 
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(DuplicateEntityException.class);
+    }
+
+    @Test
+    void update_found_withBrand_returnsUpdatedResponse() {
+        ProductGroupModel entity = mock(ProductGroupModel.class);
+        given(repository.findById(1L)).willReturn(Optional.of(entity));
+        given(repository.existsByNameAndBrandAndIdNot("Reel Baru", "Shimano", 1L)).willReturn(false);
+        ProductGroupModel saved = mock(ProductGroupModel.class);
+        given(saved.getId()).willReturn(1L);
+        given(saved.getName()).willReturn("Reel Baru");
+        given(saved.getBrand()).willReturn("Shimano");
+        given(saved.getCategory()).willReturn("Reel");
+        given(saved.getDescription()).willReturn("Desc baru");
+        given(saved.getCreatedAt()).willReturn(null);
+        given(saved.getUpdatedAt()).willReturn(null);
+        given(repository.save(entity)).willReturn(saved);
+
+        ProductGroupResponse result = service.update(1L, new UpdateProductGroupRequest("Reel Baru", "Shimano", "Reel", "Desc baru"));
+
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.name()).isEqualTo("Reel Baru");
+        assertThat(result.brand()).isEqualTo("Shimano");
+        assertThat(result.category()).isEqualTo("Reel");
+        assertThat(result.description()).isEqualTo("Desc baru");
+    }
+
+    @Test
+    void update_found_withNullBrand_returnsUpdatedResponse() {
+        ProductGroupModel entity = mock(ProductGroupModel.class);
+        given(repository.findById(2L)).willReturn(Optional.of(entity));
+        given(repository.existsByNameAndBrandIsNullAndIdNot("Reel Baru", 2L)).willReturn(false);
+        ProductGroupModel saved = mock(ProductGroupModel.class);
+        given(saved.getId()).willReturn(2L);
+        given(saved.getName()).willReturn("Reel Baru");
+        given(saved.getBrand()).willReturn(null);
+        given(saved.getCategory()).willReturn(null);
+        given(saved.getDescription()).willReturn(null);
+        given(saved.getCreatedAt()).willReturn(null);
+        given(saved.getUpdatedAt()).willReturn(null);
+        given(repository.save(entity)).willReturn(saved);
+
+        ProductGroupResponse result = service.update(2L, new UpdateProductGroupRequest("Reel Baru", null, null, null));
+
+        assertThat(result.name()).isEqualTo("Reel Baru");
+        assertThat(result.brand()).isNull();
+    }
+
+    @Test
+    void update_notFound_throwsEntityNotFoundException() {
+        given(repository.findById(99L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.update(99L, new UpdateProductGroupRequest("X", null, null, null)))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    void update_duplicateNameAndBrand_throwsDuplicateEntityException() {
+        ProductGroupModel entity = mock(ProductGroupModel.class);
+        given(repository.findById(1L)).willReturn(Optional.of(entity));
+        given(repository.existsByNameAndBrandAndIdNot("Reel Spinning", "Shimano", 1L)).willReturn(true);
+
+        assertThatThrownBy(() -> service.update(1L, new UpdateProductGroupRequest("Reel Spinning", "Shimano", null, null)))
+                .isInstanceOf(DuplicateEntityException.class);
+    }
+
+    @Test
+    void update_duplicateNameWithNullBrand_throwsDuplicateEntityException() {
+        ProductGroupModel entity = mock(ProductGroupModel.class);
+        given(repository.findById(1L)).willReturn(Optional.of(entity));
+        given(repository.existsByNameAndBrandIsNullAndIdNot("Reel Spinning", 1L)).willReturn(true);
+
+        assertThatThrownBy(() -> service.update(1L, new UpdateProductGroupRequest("Reel Spinning", null, null, null)))
+                .isInstanceOf(DuplicateEntityException.class);
+    }
+
+    @Test
+    void update_persistsCorrectFields() {
+        ProductGroupModel entity = ProductGroupModel.builder()
+                .name("Old Name")
+                .brand("Old Brand")
+                .category("Old Cat")
+                .description("Old Desc")
+                .build();
+        given(repository.findById(1L)).willReturn(Optional.of(entity));
+        given(repository.existsByNameAndBrandAndIdNot("New Name", "New Brand", 1L)).willReturn(false);
+        given(repository.save(entity)).willReturn(entity);
+
+        service.update(1L, new UpdateProductGroupRequest("New Name", "New Brand", "New Cat", "New Desc"));
+
+        ArgumentCaptor<ProductGroupModel> captor = ArgumentCaptor.forClass(ProductGroupModel.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getName()).isEqualTo("New Name");
+        assertThat(captor.getValue().getBrand()).isEqualTo("New Brand");
+        assertThat(captor.getValue().getCategory()).isEqualTo("New Cat");
+        assertThat(captor.getValue().getDescription()).isEqualTo("New Desc");
+    }
+
+    @Test
+    void delete_existingId_callsDeleteById() {
+        given(repository.existsById(1L)).willReturn(true);
+
+        service.delete(1L);
+
+        verify(repository).deleteById(1L);
+    }
+
+    @Test
+    void delete_nonExistentId_throwsEntityNotFoundException() {
+        given(repository.existsById(99L)).willReturn(false);
+
+        assertThatThrownBy(() -> service.delete(99L))
+                .isInstanceOf(EntityNotFoundException.class);
     }
 
 }

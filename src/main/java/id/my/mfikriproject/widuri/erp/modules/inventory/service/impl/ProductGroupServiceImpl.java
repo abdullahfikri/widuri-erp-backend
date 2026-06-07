@@ -4,6 +4,7 @@ import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse;
+import id.my.mfikriproject.widuri.erp.modules.inventory.dto.UpdateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.entity.ProductGroupModel;
 import id.my.mfikriproject.widuri.erp.modules.inventory.repository.ProductGroupRepository;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductGroupService;
@@ -51,12 +52,27 @@ public class ProductGroupServiceImpl implements ProductGroupService {
     }
 
     @Override
-    public ProductGroupResponse update(Long id, CreateProductGroupRequest request) {
-        return null;
+    public ProductGroupResponse update(Long id, UpdateProductGroupRequest request) {
+        ProductGroupModel entity = productGroupRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("ProductGroup not found"));
+
+        boolean duplicate = request.brand() != null
+                ? productGroupRepository.existsByNameAndBrandAndIdNot(request.name(), request.brand(), id)
+                : productGroupRepository.existsByNameAndBrandIsNullAndIdNot(request.name(), id);
+
+        if (duplicate) {
+            throw new DuplicateEntityException("ProductGroup already exists");
+        }
+
+        entity.updateFields(request.name(), request.brand(), request.category(), request.description());
+        return ProductGroupResponse.from(productGroupRepository.save(entity));
     }
 
     @Override
     public void delete(Long id) {
-
+        if (!productGroupRepository.existsById(id)) {
+            throw new EntityNotFoundException("ProductGroup not found");
+        }
+        productGroupRepository.deleteById(id);
     }
 }

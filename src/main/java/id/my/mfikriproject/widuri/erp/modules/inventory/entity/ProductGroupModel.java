@@ -41,4 +41,11 @@ public class ProductGroupModel extends AuditableModel {
 
     @OneToMany(mappedBy = "productGroupModel", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
     private List<ProductModel> productList;
+
+    public void updateFields(String name, String brand, String category, String description) {
+        this.name = name;
+        this.brand = brand;
+        this.category = category;
+        this.description = description;
+    }
 }

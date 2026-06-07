@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ProductGroupRepository extends JpaRepository<ProductGroupModel, Long> {
     boolean existsByNameAndBrand(String name, String brand);
     boolean existsByNameAndBrandIsNull(String name);
+    boolean existsByNameAndBrandAndIdNot(String name, String brand, Long id);
+    boolean existsByNameAndBrandIsNullAndIdNot(String name, Long id);
 }

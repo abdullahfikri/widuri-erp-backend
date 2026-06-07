@@ -2,6 +2,7 @@ package id.my.mfikriproject.widuri.erp.modules.inventory.controller;
 
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse;
+import id.my.mfikriproject.widuri.erp.modules.inventory.dto.UpdateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductGroupService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -43,5 +44,21 @@ public class ProductGroupController {
         ProductGroupResponse response = productGroupService.create(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping(value = "/{id}",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ProductGroupResponse> update(
+            @PathVariable Long id,
+            @RequestBody @Valid UpdateProductGroupRequest request
+    ) {
+        return ResponseEntity.ok(productGroupService.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        productGroupService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }
