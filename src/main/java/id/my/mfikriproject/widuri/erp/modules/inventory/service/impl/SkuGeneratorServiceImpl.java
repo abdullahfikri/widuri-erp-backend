@@ -26,6 +26,6 @@ public class SkuGeneratorServiceImpl implements SkuGeneratorService {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("SKU component must not be null or blank");
         }
-        return value.trim().toUpperCase().replace(' ', '-');
+        return value.trim().toUpperCase().replaceAll("\\s+", "-");
     }
 }

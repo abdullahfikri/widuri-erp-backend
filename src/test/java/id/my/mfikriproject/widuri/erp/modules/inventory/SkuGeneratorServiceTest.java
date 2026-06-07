@@ -113,6 +113,15 @@ class SkuGeneratorServiceTest {
     }
 
     @Test
+    void generate_categoryWithMultipleConsecutiveSpaces_collapsesToSingleDash() {
+        given(skuRepository.getNextSkuSequence()).willReturn("001");
+
+        String result = service.generate("Shimano", "Spinning  Reel", "Silver");
+
+        assertThat(result).isEqualTo("SHIMANO-SPINNING-REEL-SILVER-001");
+    }
+
+    @Test
     void generate_delegatesToRepository() {
         given(skuRepository.getNextSkuSequence()).willReturn("005");
 

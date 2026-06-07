@@ -1,10 +1,19 @@
 package id.my.mfikriproject.widuri.erp.modules.inventory.repository;
 
-import id.my.mfikriproject.widuri.erp.modules.inventory.entity.ProductModel;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Repository;
 
-public interface SkuRepository extends JpaRepository<ProductModel, Long> {
-    @Query(value = "SELECT get_next_sku_seq()", nativeQuery = true)
-    String getNextSkuSequence();
+@Repository
+public class SkuRepository {
+    private final JdbcClient jdbcClient;
+
+    public SkuRepository(JdbcClient jdbcClient) {
+        this.jdbcClient = jdbcClient;
+    }
+
+    public String getNextSkuSequence() {
+        return jdbcClient.sql("SELECT get_next_sku_seq()")
+                .query(String.class)
+                .single();
+    }
 }
