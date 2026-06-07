@@ -21,10 +21,12 @@ public class ProductGroupServiceImpl implements ProductGroupService {
         this.productGroupRepository = productGroupRepository;
     }
 
+    @Override
     public Page<ProductGroupResponse> findAll(Pageable pageable) {
         return productGroupRepository.findAll(pageable).map(ProductGroupResponse::from);
     }
 
+    @Override
     public ProductGroupResponse findById(Long id) {
         return productGroupRepository.findById(id)
                 .map(ProductGroupResponse::from)

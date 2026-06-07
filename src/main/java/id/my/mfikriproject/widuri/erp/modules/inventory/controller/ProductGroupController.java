@@ -36,10 +36,10 @@ public class ProductGroupController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE,
-    produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ProductGroupResponse> create (
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ProductGroupResponse> create(
             @RequestBody @Valid ProductGroupRequest request
-            ) {
+    ) {
         ProductGroupResponse response = productGroupService.create(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
