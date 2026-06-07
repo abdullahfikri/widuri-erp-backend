@@ -33,14 +33,15 @@ public class ProductGroupServiceImpl implements ProductGroupService {
 
     @Override
     public ProductGroupResponse create(ProductGroupRequest request) {
-        if (isDuplicate(request.name(), request.brand(), null)) {
+        String brand = normalizeBrand(request.brand());
+        if (isDuplicate(request.name(), brand, null)) {
             throw new DuplicateEntityException("ProductGroup already exists");
         }
 
         ProductGroupModel productGroupModel = ProductGroupModel
                 .builder()
                 .name(request.name())
-                .brand(request.brand())
+                .brand(brand)
                 .category(request.category())
                 .description(request.description())
                 .build();
@@ -53,11 +54,12 @@ public class ProductGroupServiceImpl implements ProductGroupService {
         ProductGroupModel entity = productGroupRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("ProductGroup not found"));
 
-        if (isDuplicate(request.name(), request.brand(), id)) {
+        String brand = normalizeBrand(request.brand());
+        if (isDuplicate(request.name(), brand, id)) {
             throw new DuplicateEntityException("ProductGroup already exists");
         }
 
-        entity.updateFields(request.name(), request.brand(), request.category(), request.description());
+        entity.updateFields(request.name(), brand, request.category(), request.description());
         return saveAndHandleDuplicate(entity);
     }
 
@@ -80,6 +82,10 @@ public class ProductGroupServiceImpl implements ProductGroupService {
             }
             throw e;
         }
+    }
+
+    private static String normalizeBrand(String brand) {
+        return (brand == null || brand.isBlank()) ? null : brand;
     }
 
     private boolean isDuplicate(String name, String brand, Long excludeId) {

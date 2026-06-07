@@ -245,6 +245,68 @@ class ProductGroupServiceTest {
     }
 
     @Test
+    void create_emptyBrand_usesNullBranchForDuplicateCheck() {
+        ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", "", null, null);
+        given(repository.existsByNameAndBrandIsNull("Reel Spinning")).willReturn(false);
+        ProductGroupModel saved = mock(ProductGroupModel.class);
+        given(saved.getCreatedAt()).willReturn(null);
+        given(saved.getUpdatedAt()).willReturn(null);
+        given(repository.save(any())).willReturn(saved);
+
+        service.create(request);
+
+        verify(repository).existsByNameAndBrandIsNull("Reel Spinning");
+        verify(repository, never()).existsByNameAndBrand(any(), any());
+    }
+
+    @Test
+    void create_blankBrand_usesNullBranchForDuplicateCheck() {
+        ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", "   ", null, null);
+        given(repository.existsByNameAndBrandIsNull("Reel Spinning")).willReturn(false);
+        ProductGroupModel saved = mock(ProductGroupModel.class);
+        given(saved.getCreatedAt()).willReturn(null);
+        given(saved.getUpdatedAt()).willReturn(null);
+        given(repository.save(any())).willReturn(saved);
+
+        service.create(request);
+
+        verify(repository).existsByNameAndBrandIsNull("Reel Spinning");
+        verify(repository, never()).existsByNameAndBrand(any(), any());
+    }
+
+    @Test
+    void create_emptyBrand_persistedAsNull() {
+        ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", "", "Reel", null);
+        given(repository.existsByNameAndBrandIsNull("Reel Spinning")).willReturn(false);
+        ProductGroupModel saved = mock(ProductGroupModel.class);
+        given(saved.getCreatedAt()).willReturn(null);
+        given(saved.getUpdatedAt()).willReturn(null);
+        given(repository.save(any())).willReturn(saved);
+
+        service.create(request);
+
+        ArgumentCaptor<ProductGroupModel> captor = ArgumentCaptor.forClass(ProductGroupModel.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getBrand()).isNull();
+    }
+
+    @Test
+    void update_emptyBrand_usesNullBranchForDuplicateCheck() {
+        ProductGroupModel entity = mock(ProductGroupModel.class);
+        given(repository.findById(1L)).willReturn(Optional.of(entity));
+        given(repository.existsByNameAndBrandIsNullAndIdNot("Reel Spinning", 1L)).willReturn(false);
+        ProductGroupModel saved = mock(ProductGroupModel.class);
+        given(saved.getCreatedAt()).willReturn(null);
+        given(saved.getUpdatedAt()).willReturn(null);
+        given(repository.save(entity)).willReturn(saved);
+
+        service.update(1L, new ProductGroupRequest("Reel Spinning", "", null, null));
+
+        verify(repository).existsByNameAndBrandIsNullAndIdNot("Reel Spinning", 1L);
+        verify(repository, never()).existsByNameAndBrandAndIdNot(any(), any(), any());
+    }
+
+    @Test
     void create_concurrentDuplicate_throwsDuplicateEntityException() {
         ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", "Shimano", null, null);
         given(repository.existsByNameAndBrand("Reel Spinning", "Shimano")).willReturn(false);
