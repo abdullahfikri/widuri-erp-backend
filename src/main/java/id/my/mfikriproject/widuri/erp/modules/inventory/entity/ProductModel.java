@@ -71,14 +71,16 @@ public class ProductModel extends AuditableModel {
     }
 
     public void addStock(int delta) {
-        this.stockQuantity += delta;
+        int current = this.stockQuantity != null ? this.stockQuantity : 0;
+        this.stockQuantity = current + delta;
     }
 
     public void subtractStock(int quantity) {
-        if (this.stockQuantity < quantity) {
+        int current = this.stockQuantity != null ? this.stockQuantity : 0;
+        if (current < quantity) {
             throw new IllegalArgumentException(
-                    "Insufficient stock: " + stockQuantity + " available, " + quantity + " requested");
+                    "Insufficient stock: " + current + " available, " + quantity + " requested");
         }
-        this.stockQuantity -= quantity;
+        this.stockQuantity = current - quantity;
     }
 }

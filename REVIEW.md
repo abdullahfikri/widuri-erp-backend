@@ -1,150 +1,104 @@
-# Code Review + Security Review — Task 3.3 (Product CRUD)
+# Code Review + Security Review — Task 3.4 (Stock Adjustment)
 
-**Branch:** `develop/task-3.3-product-crud`  
+**Branch:** `develop/task-3.4-stock-adjustment`
 **Date:** 2026-06-07
 
 ---
 
-## SECURITY
+## [BUG-1] CRITICAL — NullPointerException di addStock() dan subtractStock()
 
-### [SEC-1] CRITICAL — IDOR: ProductGroupId tidak divalidasi milik store yang sama
-
-**File:** `src/main/java/.../service/impl/ProductServiceImpl.java:63`
+**File:** `src/main/java/.../entity/ProductModel.java:73,77`
 
 ```java
-ProductGroupModel group = productGroupRepository.findById(request.productGroupId())
-        .orElseThrow(() -> new EntityNotFoundException("ProductGroup not found"));
-```
-
-`findById()` mencari di semua store. Attacker dengan X-Store-Id: 1 bisa mengirim `productGroupId` milik Store 2 — produk dibuat di Store 1 tapi mereferensi ProductGroup milik Store 2.
-
-**Fix:** Ganti dengan query yang memvalidasi kepemilikan store:
-```java
-// Opsi A — tambahkan query di ProductGroupRepository:
-productGroupRepository.findByIdAndStoreId(request.productGroupId(), storeId)
-        .orElseThrow(() -> new EntityNotFoundException("ProductGroup not found"));
-```
-Atau jika ProductGroupModel tidak punya storeId langsung, validasi setelah load:
-```java
-if (!group.getStoreModel().getId().equals(storeId)) {
-    throw new EntityNotFoundException("ProductGroup not found");
+public void addStock(int delta) {
+    this.stockQuantity += delta;          // NPE jika stockQuantity null (unboxing)
 }
+public void subtractStock(int quantity) {
+    if (this.stockQuantity < quantity) {  // NPE jika stockQuantity null (unboxing)
 ```
 
----
-
-### [SEC-2] HIGH — attributes Map tidak ada batasan ukuran/kedalaman (DoS + stored XSS risk)
-
-**File:** `src/main/java/.../dto/CreateProductRequest.java` dan `UpdateProductRequest.java`
-
-```java
-Map<String, Object> attributes,  // tidak ada @Size, tidak ada validasi
+`stockQuantity` bertipe `Integer` (nullable). DB schema di V1 mendefinisikan:
+```sql
+stock_quantity INT DEFAULT 0  -- tidak ada NOT NULL!
 ```
+Jika ada baris dengan `stock_quantity = NULL` (produk lama atau insert manual), kedua method throw `NullPointerException` — bukan error yang informatif.
 
-- Payload 10MB dengan deeply nested JSON menguras heap → OutOfMemoryError
-- Nilai string dalam map tidak di-sanitize sebelum disimpan ke JSONB dan dikembalikan di response
-
-**Fix:** Tambahkan validasi ukuran. Untuk membatasi kedalaman JSON, konfigurasikan Jackson `DeserializationFeature.FAIL_ON_TOO_DEEP_NESTING` (Spring Boot 2.7+). Minimal batasi jumlah entries:
+**Fix opsi A** — Tambahkan null guard di method:
 ```java
-@Size(max = 50) Map<String, Object> attributes,
-```
-Atau tambahkan custom validator yang memeriksa total keys dan panjang nilai.
-
----
-
-### [SEC-3] MEDIUM — X-Store-Id header tidak dikaitkan dengan identitas user yang terautentikasi
-
-**File:** `src/main/java/.../core/StoreContextFilter.java`
-
-StoreContextFilter hanya memvalidasi bahwa `X-Store-Id` adalah integer positif — tidak memverifikasi bahwa user yang terautentikasi memang berhak atas store tersebut. Siapapun yang tahu store ID lain bisa mengakses datanya.
-
-**Catatan:** Ini adalah architectural gap yang lebih besar — membutuhkan Spring Security + user-store authorization. Daftar sebagai known limitation sampai auth layer diimplementasikan.
-
----
-
-### [SEC-4] MEDIUM — Tidak ada autentikasi/otorisasi di endpoint
-
-**File:** `src/main/java/.../controller/ProductController.java:17`
-
-Tidak ada `@PreAuthorize`, Spring Security config, atau filter autentikasi yang terlihat. Semua endpoint accessible oleh siapapun yang bisa mengirim request valid.
-
-**Catatan:** Sama seperti SEC-3 — known gap, butuh implementasi auth layer terpisah.
-
----
-
-## CODE QUALITY
-
-### [BUG-1] MEDIUM — Dead try-catch di create() tidak memberikan nilai apapun
-
-**File:** `src/main/java/.../service/impl/ProductServiceImpl.java:90`
-
-```java
-try {
-    return ProductResponse.from(productRepository.save(product));
-} catch (DataIntegrityViolationException e) {
-    throw e;  // ← no-op: identik dengan tidak ada try-catch sama sekali
+public void addStock(int delta) {
+    this.stockQuantity = (this.stockQuantity != null ? this.stockQuantity : 0) + delta;
 }
-```
-
-Berbeda dengan `ProductGroupServiceImpl.saveAndHandleDuplicate()` yang memeriksa nama constraint dan mengkonversi ke `DuplicateEntityException`. Di sini exception hanya di-rethrow ke `handleDataIntegrity()` → 409 `DATA_CONFLICT` tanpa informasi lebih spesifik.
-
-**Fix opsi A** — Hapus try-catch (biarkan propagate alami):
-```java
-return ProductResponse.from(productRepository.save(product));
-```
-
-**Fix opsi B** — Tambahkan handling spesifik seperti ProductGroupServiceImpl:
-```java
-private static final String SKU_CONSTRAINT = "uq_m_product_sku";
-
-try {
-    return ProductResponse.from(productRepository.save(product));
-} catch (DataIntegrityViolationException e) {
-    if (e.getCause() instanceof ConstraintViolationException cve
-            && SKU_CONSTRAINT.equals(cve.getConstraintName())) {
-        throw new DuplicateEntityException("Product with this SKU already exists");
+public void subtractStock(int quantity) {
+    int current = this.stockQuantity != null ? this.stockQuantity : 0;
+    if (current < quantity) {
+        throw new IllegalArgumentException(
+                "Insufficient stock: " + current + " available, " + quantity + " requested");
     }
-    throw e;
+    this.stockQuantity = current - quantity;
+}
+```
+
+**Fix opsi B** (lebih permanen) — Tambahkan `NOT NULL DEFAULT 0` ke kolom via migration:
+```sql
+ALTER TABLE m_product ALTER COLUMN stock_quantity SET NOT NULL;
+ALTER TABLE m_product ALTER COLUMN stock_quantity SET DEFAULT 0;
+```
+Dan ubah field entity ke `int` (primitive).
+
+---
+
+## [BUG-2] MEDIUM — Integer overflow: addStock() tidak punya batas atas
+
+**File:** `src/main/java/.../entity/ProductModel.java:74` dan `src/main/java/.../dto/StockAdjustRequest.java`
+
+`addStock()` tidak memvalidasi upper bound. Kolom DB adalah `INT` (max ~2.1 miliar). Request hanya punya `@Min(1)` tanpa `@Max`.
+
+**Fix:** Tambahkan `@Max(1_000_000)` di `StockAdjustRequest.quantity` (sesuaikan dengan kebutuhan bisnis), atau tambahkan guard di `addStock()`:
+```java
+if (this.stockQuantity + delta > Integer.MAX_VALUE) {
+    throw new IllegalArgumentException("Stock quantity would overflow");
 }
 ```
 
 ---
 
-### [BUG-2] LOW — minStockLevel tidak di-set saat create — bergantung pada DB default secara implisit
+## [QUALITY-1] LOW — Audit log tidak menyimpan identitas user
 
-**File:** `src/main/java/.../service/impl/ProductServiceImpl.java:79`
+**File:** `src/main/resources/db/migration/V3__Add_stock_adjustment_notes.sql:36`
 
-`ProductModel.builder()` di `create()` tidak memanggil `.minStockLevel(...)`. Nilai default 5 datang dari DB schema, tapi tidak terlihat di kode. Jika `CreateProductRequest` memiliki `minStockLevel`, ini harus diteruskan ke builder. Jika memang tidak boleh di-set saat create, dokumentasikan bahwa nilai default adalah 5.
+```sql
+'system',  -- changed_by hardcoded
+current_setting('app.stock_notes', true)
+```
 
-**Fix:** Sesuaikan dengan keputusan desain:
-- Jika client boleh set: tambahkan `minStockLevel` ke `CreateProductRequest` dan `.minStockLevel(request.minStockLevel() != null ? request.minStockLevel() : 5)` di builder
-- Jika selalu default: tambahkan komentar `// minStockLevel defaults to 5 via DB column default`
+Audit trail menyimpan `reason` (alasan adjustment) tapi tidak menyimpan siapa yang melakukan adjustment. Semua stock changes tercatat sebagai `changed_by = 'system'`. Untuk retail, ini kehilangan akuntabilitas — tidak tahu kasir/admin mana yang adjust stok.
 
----
-
-### [QUALITY-1] LOW — LazyInitializationException potensial di ProductResponse.from()
-
-**File:** `src/main/java/.../dto/ProductResponse.java` (baris `model.getProductGroupModel().getId()`)
-
-`productGroupModel` adalah `FetchType.LAZY`. Jika `from()` dipanggil di luar transaction (misalnya setelah detach), akan throw `LazyInitializationException`. Saat ini aman karena dipanggil langsung dalam service method, tapi rapuh jika pola pemanggilan berubah.
-
-**Fix:** Pastikan `productGroupModel` selalu loaded sebelum mapping, atau gunakan `@EntityGraph` di repository query.
+**Catatan:** Ini adalah architectural gap yang butuh auth layer terpisah. Logged sebagai known limitation.
 
 ---
 
-## Prioritas Perbaikan
+## Temuan yang Aman (tidak perlu tindakan)
+
+- **Urutan V3 migration aman**: kolom `notes` ditambahkan di baris 6 SEBELUM trigger diperbarui di baris 11 — tidak ada runtime error.
+- **setStockNotes transaction scope aman**: `@Transactional` di `adjustIn()`/`adjustOut()` memastikan `set_config('app.stock_notes', ..., true)` (is_local=true) dan `save()` dalam satu transaksi DB yang sama.
+- **SQL injection aman**: `set_config` menggunakan parameterized query (`:reason`), bukan string concatenation.
+
+---
+
+## Prioritas
 
 | ID | Severity | Fix sekarang? |
 |----|----------|---------------|
-| SEC-1 | CRITICAL | **Ya — sebelum merge** |
-| SEC-2 | HIGH | Ya — tambahkan `@Size(max=50)` minimal |
-| BUG-1 | MEDIUM | Ya — hapus dead try-catch atau lengkapi handling |
-| BUG-2 | LOW | Ya — dokumentasikan atau tambahkan ke request |
-| SEC-3/4 | MEDIUM | Noted — butuh auth layer terpisah |
-| QUALITY-1 | LOW | Opsional — aman untuk sekarang |
+| BUG-1 | CRITICAL | **Ya — sebelum merge** |
+| BUG-2 | MEDIUM | Ya — tambah `@Max` di DTO |
+| QUALITY-1 | LOW | Known limitation, butuh auth layer |
 
 ## Verifikasi setelah fix
 
 ```bash
-./mvnw test
+./mvnw test -Dtest="StockAdjustmentServiceTest,StockAdjustmentControllerTest"
 ```
+
+Test case tambahan yang perlu dibuat:
+- `adjustIn_nullStockQuantity_doesNotThrowNPE`
+- `adjustOut_nullStockQuantity_treatsAsZero`

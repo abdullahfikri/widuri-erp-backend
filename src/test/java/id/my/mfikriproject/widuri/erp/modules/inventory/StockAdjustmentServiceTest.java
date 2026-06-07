@@ -158,6 +158,23 @@ class StockAdjustmentServiceTest {
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
+    // --- null stockQuantity guards ---
+
+    @Test
+    void addStock_nullStockQuantity_doesNotThrowNPE() {
+        ProductModel product = new ProductModel();
+        product.addStock(10);
+        assertThat(product.getStockQuantity()).isEqualTo(10);
+    }
+
+    @Test
+    void subtractStock_nullStockQuantity_treatsAsZero() {
+        ProductModel product = new ProductModel();
+        assertThatThrownBy(() -> product.subtractStock(5))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Insufficient stock: 0 available");
+    }
+
     // --- helper ---
 
     private ProductModel mockProduct(int stockQuantity) {
