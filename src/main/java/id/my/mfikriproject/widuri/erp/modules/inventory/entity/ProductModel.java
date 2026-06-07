@@ -69,4 +69,16 @@ public class ProductModel extends AuditableModel {
         this.floorPrice = floorPrice;
         if (minStockLevel != null) this.minStockLevel = minStockLevel;
     }
+
+    public void addStock(int delta) {
+        this.stockQuantity += delta;
+    }
+
+    public void subtractStock(int quantity) {
+        if (this.stockQuantity < quantity) {
+            throw new IllegalArgumentException(
+                    "Insufficient stock: " + stockQuantity + " available, " + quantity + " requested");
+        }
+        this.stockQuantity -= quantity;
+    }
 }
