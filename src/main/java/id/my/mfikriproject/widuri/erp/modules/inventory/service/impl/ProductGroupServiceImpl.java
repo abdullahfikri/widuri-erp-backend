@@ -7,6 +7,7 @@ import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse
 import id.my.mfikriproject.widuri.erp.modules.inventory.entity.ProductGroupModel;
 import id.my.mfikriproject.widuri.erp.modules.inventory.repository.ProductGroupRepository;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductGroupService;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -44,11 +45,7 @@ public class ProductGroupServiceImpl implements ProductGroupService {
                 .description(request.description())
                 .build();
 
-        try {
-            return ProductGroupResponse.from(productGroupRepository.save(productGroupModel));
-        } catch (DataIntegrityViolationException e) {
-            throw new DuplicateEntityException("ProductGroup already exists");
-        }
+        return saveAndHandleDuplicate(productGroupModel);
     }
 
     @Override
@@ -61,11 +58,7 @@ public class ProductGroupServiceImpl implements ProductGroupService {
         }
 
         entity.updateFields(request.name(), request.brand(), request.category(), request.description());
-        try {
-            return ProductGroupResponse.from(productGroupRepository.save(entity));
-        } catch (DataIntegrityViolationException e) {
-            throw new DuplicateEntityException("ProductGroup already exists");
-        }
+        return saveAndHandleDuplicate(entity);
     }
 
     @Override
@@ -73,6 +66,20 @@ public class ProductGroupServiceImpl implements ProductGroupService {
         ProductGroupModel entity = productGroupRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("ProductGroup not found"));
         productGroupRepository.delete(entity);
+    }
+
+    private static final String UNIQUE_CONSTRAINT = "uq_product_group_name_brand";
+
+    private ProductGroupResponse saveAndHandleDuplicate(ProductGroupModel entity) {
+        try {
+            return ProductGroupResponse.from(productGroupRepository.save(entity));
+        } catch (DataIntegrityViolationException e) {
+            if (e.getCause() instanceof ConstraintViolationException cve
+                    && UNIQUE_CONSTRAINT.equals(cve.getConstraintName())) {
+                throw new DuplicateEntityException("ProductGroup already exists");
+            }
+            throw e;
+        }
     }
 
     private boolean isDuplicate(String name, String brand, Long excludeId) {

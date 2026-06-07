@@ -13,6 +13,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.*;
 
@@ -247,7 +248,9 @@ class ProductGroupServiceTest {
     void create_concurrentDuplicate_throwsDuplicateEntityException() {
         ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", "Shimano", null, null);
         given(repository.existsByNameAndBrand("Reel Spinning", "Shimano")).willReturn(false);
-        given(repository.save(any())).willThrow(new DataIntegrityViolationException("unique constraint"));
+        ConstraintViolationException cause = mock(ConstraintViolationException.class);
+        given(cause.getConstraintName()).willReturn("uq_product_group_name_brand");
+        given(repository.save(any())).willThrow(new DataIntegrityViolationException("unique constraint", cause));
 
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(DuplicateEntityException.class);
@@ -331,7 +334,9 @@ class ProductGroupServiceTest {
         ProductGroupModel entity = mock(ProductGroupModel.class);
         given(repository.findById(1L)).willReturn(Optional.of(entity));
         given(repository.existsByNameAndBrandAndIdNot("Reel Spinning", "Shimano", 1L)).willReturn(false);
-        given(repository.save(entity)).willThrow(new DataIntegrityViolationException("unique constraint"));
+        ConstraintViolationException cause = mock(ConstraintViolationException.class);
+        given(cause.getConstraintName()).willReturn("uq_product_group_name_brand");
+        given(repository.save(entity)).willThrow(new DataIntegrityViolationException("unique constraint", cause));
 
         assertThatThrownBy(() -> service.update(1L, new ProductGroupRequest("Reel Spinning", "Shimano", null, null)))
                 .isInstanceOf(DuplicateEntityException.class);
