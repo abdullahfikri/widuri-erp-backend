@@ -2,9 +2,8 @@ package id.my.mfikriproject.widuri.erp.modules.inventory;
 
 import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
-import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductGroupRequest;
+import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse;
-import id.my.mfikriproject.widuri.erp.modules.inventory.dto.UpdateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.entity.ProductGroupModel;
 import id.my.mfikriproject.widuri.erp.modules.inventory.repository.ProductGroupRepository;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.impl.ProductGroupServiceImpl;
@@ -14,6 +13,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.*;
 
 import java.util.List;
@@ -135,7 +135,7 @@ class ProductGroupServiceTest {
 
     @Test
     void create_withBrand_returnsResponseWithAllFields() {
-        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", "Shimano", "Reel", "Deskripsi");
+        ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", "Shimano", "Reel", "Deskripsi");
         given(repository.existsByNameAndBrand("Reel Spinning", "Shimano")).willReturn(false);
         ProductGroupModel saved = mock(ProductGroupModel.class);
         given(saved.getId()).willReturn(1L);
@@ -158,7 +158,7 @@ class ProductGroupServiceTest {
 
     @Test
     void create_withNullBrand_returnsResponseWithNullBrand() {
-        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", null, "Reel", null);
+        ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", null, "Reel", null);
         given(repository.existsByNameAndBrandIsNull("Reel Spinning")).willReturn(false);
         ProductGroupModel saved = mock(ProductGroupModel.class);
         given(saved.getId()).willReturn(2L);
@@ -178,7 +178,7 @@ class ProductGroupServiceTest {
 
     @Test
     void create_noDuplicate_persistsEntityWithCorrectFields() {
-        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", "Shimano", "Reel", "Desc");
+        ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", "Shimano", "Reel", "Desc");
         given(repository.existsByNameAndBrand("Reel Spinning", "Shimano")).willReturn(false);
         ProductGroupModel saved = mock(ProductGroupModel.class);
         given(saved.getCreatedAt()).willReturn(null);
@@ -197,7 +197,7 @@ class ProductGroupServiceTest {
 
     @Test
     void create_withBrand_usesNameAndBrandExistsCheck() {
-        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", "Shimano", null, null);
+        ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", "Shimano", null, null);
         given(repository.existsByNameAndBrand("Reel Spinning", "Shimano")).willReturn(false);
         ProductGroupModel saved = mock(ProductGroupModel.class);
         given(saved.getCreatedAt()).willReturn(null);
@@ -212,7 +212,7 @@ class ProductGroupServiceTest {
 
     @Test
     void create_withNullBrand_usesNullBrandExistsCheck() {
-        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", null, null, null);
+        ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", null, null, null);
         given(repository.existsByNameAndBrandIsNull("Reel Spinning")).willReturn(false);
         ProductGroupModel saved = mock(ProductGroupModel.class);
         given(saved.getCreatedAt()).willReturn(null);
@@ -227,7 +227,7 @@ class ProductGroupServiceTest {
 
     @Test
     void create_duplicateNameAndBrand_throwsDuplicateEntityException() {
-        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", "Shimano", null, null);
+        ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", "Shimano", null, null);
         given(repository.existsByNameAndBrand("Reel Spinning", "Shimano")).willReturn(true);
 
         assertThatThrownBy(() -> service.create(request))
@@ -236,8 +236,18 @@ class ProductGroupServiceTest {
 
     @Test
     void create_duplicateNameWithNullBrand_throwsDuplicateEntityException() {
-        CreateProductGroupRequest request = new CreateProductGroupRequest("Reel Spinning", null, null, null);
+        ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", null, null, null);
         given(repository.existsByNameAndBrandIsNull("Reel Spinning")).willReturn(true);
+
+        assertThatThrownBy(() -> service.create(request))
+                .isInstanceOf(DuplicateEntityException.class);
+    }
+
+    @Test
+    void create_concurrentDuplicate_throwsDuplicateEntityException() {
+        ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", "Shimano", null, null);
+        given(repository.existsByNameAndBrand("Reel Spinning", "Shimano")).willReturn(false);
+        given(repository.save(any())).willThrow(new DataIntegrityViolationException("unique constraint"));
 
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(DuplicateEntityException.class);
@@ -258,7 +268,7 @@ class ProductGroupServiceTest {
         given(saved.getUpdatedAt()).willReturn(null);
         given(repository.save(entity)).willReturn(saved);
 
-        ProductGroupResponse result = service.update(1L, new UpdateProductGroupRequest("Reel Baru", "Shimano", "Reel", "Desc baru"));
+        ProductGroupResponse result = service.update(1L, new ProductGroupRequest("Reel Baru", "Shimano", "Reel", "Desc baru"));
 
         assertThat(result.id()).isEqualTo(1L);
         assertThat(result.name()).isEqualTo("Reel Baru");
@@ -282,7 +292,7 @@ class ProductGroupServiceTest {
         given(saved.getUpdatedAt()).willReturn(null);
         given(repository.save(entity)).willReturn(saved);
 
-        ProductGroupResponse result = service.update(2L, new UpdateProductGroupRequest("Reel Baru", null, null, null));
+        ProductGroupResponse result = service.update(2L, new ProductGroupRequest("Reel Baru", null, null, null));
 
         assertThat(result.name()).isEqualTo("Reel Baru");
         assertThat(result.brand()).isNull();
@@ -292,7 +302,7 @@ class ProductGroupServiceTest {
     void update_notFound_throwsEntityNotFoundException() {
         given(repository.findById(99L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.update(99L, new UpdateProductGroupRequest("X", null, null, null)))
+        assertThatThrownBy(() -> service.update(99L, new ProductGroupRequest("X", null, null, null)))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
@@ -302,7 +312,7 @@ class ProductGroupServiceTest {
         given(repository.findById(1L)).willReturn(Optional.of(entity));
         given(repository.existsByNameAndBrandAndIdNot("Reel Spinning", "Shimano", 1L)).willReturn(true);
 
-        assertThatThrownBy(() -> service.update(1L, new UpdateProductGroupRequest("Reel Spinning", "Shimano", null, null)))
+        assertThatThrownBy(() -> service.update(1L, new ProductGroupRequest("Reel Spinning", "Shimano", null, null)))
                 .isInstanceOf(DuplicateEntityException.class);
     }
 
@@ -312,7 +322,18 @@ class ProductGroupServiceTest {
         given(repository.findById(1L)).willReturn(Optional.of(entity));
         given(repository.existsByNameAndBrandIsNullAndIdNot("Reel Spinning", 1L)).willReturn(true);
 
-        assertThatThrownBy(() -> service.update(1L, new UpdateProductGroupRequest("Reel Spinning", null, null, null)))
+        assertThatThrownBy(() -> service.update(1L, new ProductGroupRequest("Reel Spinning", null, null, null)))
+                .isInstanceOf(DuplicateEntityException.class);
+    }
+
+    @Test
+    void update_concurrentDuplicate_throwsDuplicateEntityException() {
+        ProductGroupModel entity = mock(ProductGroupModel.class);
+        given(repository.findById(1L)).willReturn(Optional.of(entity));
+        given(repository.existsByNameAndBrandAndIdNot("Reel Spinning", "Shimano", 1L)).willReturn(false);
+        given(repository.save(entity)).willThrow(new DataIntegrityViolationException("unique constraint"));
+
+        assertThatThrownBy(() -> service.update(1L, new ProductGroupRequest("Reel Spinning", "Shimano", null, null)))
                 .isInstanceOf(DuplicateEntityException.class);
     }
 
@@ -328,7 +349,7 @@ class ProductGroupServiceTest {
         given(repository.existsByNameAndBrandAndIdNot("New Name", "New Brand", 1L)).willReturn(false);
         given(repository.save(entity)).willReturn(entity);
 
-        service.update(1L, new UpdateProductGroupRequest("New Name", "New Brand", "New Cat", "New Desc"));
+        service.update(1L, new ProductGroupRequest("New Name", "New Brand", "New Cat", "New Desc"));
 
         ArgumentCaptor<ProductGroupModel> captor = ArgumentCaptor.forClass(ProductGroupModel.class);
         verify(repository).save(captor.capture());
@@ -339,17 +360,18 @@ class ProductGroupServiceTest {
     }
 
     @Test
-    void delete_existingId_callsDeleteById() {
-        given(repository.existsById(1L)).willReturn(true);
+    void delete_existingId_callsDelete() {
+        ProductGroupModel entity = mock(ProductGroupModel.class);
+        given(repository.findById(1L)).willReturn(Optional.of(entity));
 
         service.delete(1L);
 
-        verify(repository).deleteById(1L);
+        verify(repository).delete(entity);
     }
 
     @Test
     void delete_nonExistentId_throwsEntityNotFoundException() {
-        given(repository.existsById(99L)).willReturn(false);
+        given(repository.findById(99L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.delete(99L))
                 .isInstanceOf(EntityNotFoundException.class);

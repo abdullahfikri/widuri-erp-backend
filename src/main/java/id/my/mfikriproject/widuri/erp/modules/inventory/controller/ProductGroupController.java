@@ -1,8 +1,7 @@
 package id.my.mfikriproject.widuri.erp.modules.inventory.controller;
 
-import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductGroupRequest;
+import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse;
-import id.my.mfikriproject.widuri.erp.modules.inventory.dto.UpdateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductGroupService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -39,7 +38,7 @@ public class ProductGroupController {
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE,
     produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ProductGroupResponse> create (
-            @RequestBody @Valid CreateProductGroupRequest request
+            @RequestBody @Valid ProductGroupRequest request
             ) {
         ProductGroupResponse response = productGroupService.create(request);
 
@@ -51,7 +50,7 @@ public class ProductGroupController {
             produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ProductGroupResponse> update(
             @PathVariable Long id,
-            @RequestBody @Valid UpdateProductGroupRequest request
+            @RequestBody @Valid ProductGroupRequest request
     ) {
         return ResponseEntity.ok(productGroupService.update(id, request));
     }

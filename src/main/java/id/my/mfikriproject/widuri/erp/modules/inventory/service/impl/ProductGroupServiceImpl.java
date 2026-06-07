@@ -2,12 +2,12 @@ package id.my.mfikriproject.widuri.erp.modules.inventory.service.impl;
 
 import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
-import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductGroupRequest;
+import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse;
-import id.my.mfikriproject.widuri.erp.modules.inventory.dto.UpdateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.entity.ProductGroupModel;
 import id.my.mfikriproject.widuri.erp.modules.inventory.repository.ProductGroupRepository;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductGroupService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -31,12 +31,8 @@ public class ProductGroupServiceImpl implements ProductGroupService {
     }
 
     @Override
-    public ProductGroupResponse create(CreateProductGroupRequest request) {
-        boolean duplicate = request.brand() != null
-                ? productGroupRepository.existsByNameAndBrand(request.name(), request.brand())
-                : productGroupRepository.existsByNameAndBrandIsNull(request.name());
-
-        if (duplicate) {
+    public ProductGroupResponse create(ProductGroupRequest request) {
+        if (isDuplicate(request.name(), request.brand(), null)) {
             throw new DuplicateEntityException("ProductGroup already exists");
         }
 
@@ -48,31 +44,45 @@ public class ProductGroupServiceImpl implements ProductGroupService {
                 .description(request.description())
                 .build();
 
-        return ProductGroupResponse.from(productGroupRepository.save(productGroupModel));
+        try {
+            return ProductGroupResponse.from(productGroupRepository.save(productGroupModel));
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateEntityException("ProductGroup already exists");
+        }
     }
 
     @Override
-    public ProductGroupResponse update(Long id, UpdateProductGroupRequest request) {
+    public ProductGroupResponse update(Long id, ProductGroupRequest request) {
         ProductGroupModel entity = productGroupRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("ProductGroup not found"));
 
-        boolean duplicate = request.brand() != null
-                ? productGroupRepository.existsByNameAndBrandAndIdNot(request.name(), request.brand(), id)
-                : productGroupRepository.existsByNameAndBrandIsNullAndIdNot(request.name(), id);
-
-        if (duplicate) {
+        if (isDuplicate(request.name(), request.brand(), id)) {
             throw new DuplicateEntityException("ProductGroup already exists");
         }
 
         entity.updateFields(request.name(), request.brand(), request.category(), request.description());
-        return ProductGroupResponse.from(productGroupRepository.save(entity));
+        try {
+            return ProductGroupResponse.from(productGroupRepository.save(entity));
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateEntityException("ProductGroup already exists");
+        }
     }
 
     @Override
     public void delete(Long id) {
-        if (!productGroupRepository.existsById(id)) {
-            throw new EntityNotFoundException("ProductGroup not found");
+        ProductGroupModel entity = productGroupRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("ProductGroup not found"));
+        productGroupRepository.delete(entity);
+    }
+
+    private boolean isDuplicate(String name, String brand, Long excludeId) {
+        if (excludeId == null) {
+            return brand != null
+                    ? productGroupRepository.existsByNameAndBrand(name, brand)
+                    : productGroupRepository.existsByNameAndBrandIsNull(name);
         }
-        productGroupRepository.deleteById(id);
+        return brand != null
+                ? productGroupRepository.existsByNameAndBrandAndIdNot(name, brand, excludeId)
+                : productGroupRepository.existsByNameAndBrandIsNullAndIdNot(name, excludeId);
     }
 }

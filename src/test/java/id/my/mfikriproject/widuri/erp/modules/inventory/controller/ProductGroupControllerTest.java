@@ -5,9 +5,8 @@ import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
-import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductGroupRequest;
+import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductGroupResponse;
-import id.my.mfikriproject.widuri.erp.modules.inventory.dto.UpdateProductGroupRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductGroupService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -188,7 +187,7 @@ class ProductGroupControllerTest {
     @Test
     void create_validRequest_returns201WithBody() {
         ProductGroupResponse response = new ProductGroupResponse(1L, "Reel Spinning", "Shimano", "Reel", null, null, null);
-        given(productGroupService.create(any(CreateProductGroupRequest.class))).willReturn(response);
+        given(productGroupService.create(any(ProductGroupRequest.class))).willReturn(response);
 
         MvcTestResult result = mvc.post().uri(URL)
                 .header(STORE_ID_HEADER, "1")
@@ -205,7 +204,7 @@ class ProductGroupControllerTest {
     @Test
     void create_nullBrand_returns201() {
         ProductGroupResponse response = new ProductGroupResponse(2L, "Reel Spinning", null, null, null, null, null);
-        given(productGroupService.create(any(CreateProductGroupRequest.class))).willReturn(response);
+        given(productGroupService.create(any(ProductGroupRequest.class))).willReturn(response);
 
         assertThat(mvc.post().uri(URL)
                 .header(STORE_ID_HEADER, "1")
@@ -217,7 +216,7 @@ class ProductGroupControllerTest {
     @Test
     void create_delegatesToServiceWithCorrectFields() {
         ProductGroupResponse response = new ProductGroupResponse(1L, "Reel Spinning", "Shimano", "Reel", null, null, null);
-        given(productGroupService.create(any(CreateProductGroupRequest.class))).willReturn(response);
+        given(productGroupService.create(any(ProductGroupRequest.class))).willReturn(response);
 
         mvc.post().uri(URL)
                 .header(STORE_ID_HEADER, "1")
@@ -225,7 +224,7 @@ class ProductGroupControllerTest {
                 .content("{\"name\":\"Reel Spinning\",\"brand\":\"Shimano\",\"category\":\"Reel\"}")
                 .exchange();
 
-        ArgumentCaptor<CreateProductGroupRequest> captor = ArgumentCaptor.forClass(CreateProductGroupRequest.class);
+        ArgumentCaptor<ProductGroupRequest> captor = ArgumentCaptor.forClass(ProductGroupRequest.class);
         verify(productGroupService).create(captor.capture());
         assertThat(captor.getValue().name()).isEqualTo("Reel Spinning");
         assertThat(captor.getValue().brand()).isEqualTo("Shimano");
@@ -268,7 +267,7 @@ class ProductGroupControllerTest {
 
     @Test
     void create_duplicateEntity_returns409WithCode() {
-        given(productGroupService.create(any(CreateProductGroupRequest.class)))
+        given(productGroupService.create(any(ProductGroupRequest.class)))
                 .willThrow(new DuplicateEntityException("ProductGroup already exists"));
 
         assertThat(mvc.post().uri(URL)
@@ -288,6 +287,16 @@ class ProductGroupControllerTest {
                 .bodyJson().extractingPath("$.code").asString().isEqualTo("MISSING_STORE_ID");
     }
 
+    @Test
+    void create_malformedJson_returns400() {
+        assertThat(mvc.post().uri(URL)
+                .header(STORE_ID_HEADER, "1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{invalid json}"))
+                .hasStatus(400)
+                .bodyJson().extractingPath("$.code").asString().isEqualTo("INVALID_INPUT");
+    }
+
     // XSS: API menerima payload sebagai string biasa; perlindungan utama ada di Content-Type: application/json
     // yang mencegah browser mengeksekusi payload sebagai HTML.
 
@@ -296,7 +305,7 @@ class ProductGroupControllerTest {
         // Script tag dalam name — valid sebagai string, harus lolos masuk ke service
         String xssName = "<script>alert('xss')</script>";
         ProductGroupResponse response = new ProductGroupResponse(1L, xssName, null, null, null, null, null);
-        given(productGroupService.create(any(CreateProductGroupRequest.class))).willReturn(response);
+        given(productGroupService.create(any(ProductGroupRequest.class))).willReturn(response);
 
         MvcTestResult result = mvc.post().uri(URL)
                 .header(STORE_ID_HEADER, "1")
@@ -317,7 +326,7 @@ class ProductGroupControllerTest {
         // Img onerror — vektor XSS umum selain script tag
         String xssDescription = "<img src=x onerror=alert('xss')>";
         ProductGroupResponse response = new ProductGroupResponse(1L, "Reel", null, null, xssDescription, null, null);
-        given(productGroupService.create(any(CreateProductGroupRequest.class))).willReturn(response);
+        given(productGroupService.create(any(ProductGroupRequest.class))).willReturn(response);
 
         MvcTestResult result = mvc.post().uri(URL)
                 .header(STORE_ID_HEADER, "1")
@@ -334,7 +343,7 @@ class ProductGroupControllerTest {
     void create_xssPayload_serviceReceivesRawUnmodifiedString() {
         // Verifikasi: server tidak mengubah (strip/encode) payload sebelum diteruskan ke service
         // Sanitasi adalah tanggung jawab layer frontend saat merender ke HTML
-        given(productGroupService.create(any(CreateProductGroupRequest.class)))
+        given(productGroupService.create(any(ProductGroupRequest.class)))
                 .willReturn(new ProductGroupResponse(1L, "x", null, null, null, null, null));
 
         mvc.post().uri(URL)
@@ -343,7 +352,7 @@ class ProductGroupControllerTest {
                 .content("{\"name\":\"<script>alert(1)</script>\"}")
                 .exchange();
 
-        ArgumentCaptor<CreateProductGroupRequest> captor = ArgumentCaptor.forClass(CreateProductGroupRequest.class);
+        ArgumentCaptor<ProductGroupRequest> captor = ArgumentCaptor.forClass(ProductGroupRequest.class);
         verify(productGroupService).create(captor.capture());
         // String harus sampai ke service persis seperti yang dikirim — tidak di-strip server
         assertThat(captor.getValue().name()).isEqualTo("<script>alert(1)</script>");
@@ -391,7 +400,7 @@ class ProductGroupControllerTest {
     @Test
     void update_validRequest_returns200WithBody() {
         ProductGroupResponse response = new ProductGroupResponse(1L, "Reel Baru", "Shimano", "Reel", null, null, null);
-        given(productGroupService.update(any(Long.class), any(UpdateProductGroupRequest.class))).willReturn(response);
+        given(productGroupService.update(any(Long.class), any(ProductGroupRequest.class))).willReturn(response);
 
         MvcTestResult result = mvc.put().uri(URL + "/1")
                 .header(STORE_ID_HEADER, "1")
@@ -407,7 +416,7 @@ class ProductGroupControllerTest {
 
     @Test
     void update_notFound_returns404WithCode() {
-        given(productGroupService.update(any(Long.class), any(UpdateProductGroupRequest.class)))
+        given(productGroupService.update(any(Long.class), any(ProductGroupRequest.class)))
                 .willThrow(new EntityNotFoundException("ProductGroup not found"));
 
         assertThat(mvc.put().uri(URL + "/99")
@@ -420,7 +429,7 @@ class ProductGroupControllerTest {
 
     @Test
     void update_duplicate_returns409WithCode() {
-        given(productGroupService.update(any(Long.class), any(UpdateProductGroupRequest.class)))
+        given(productGroupService.update(any(Long.class), any(ProductGroupRequest.class)))
                 .willThrow(new DuplicateEntityException("ProductGroup already exists"));
 
         assertThat(mvc.put().uri(URL + "/1")
@@ -460,5 +469,15 @@ class ProductGroupControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Reel Baru\"}"))
                 .hasStatus(400);
+    }
+
+    @Test
+    void update_malformedJson_returns400() {
+        assertThat(mvc.put().uri(URL + "/1")
+                .header(STORE_ID_HEADER, "1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{invalid json}"))
+                .hasStatus(400)
+                .bodyJson().extractingPath("$.code").asString().isEqualTo("INVALID_INPUT");
     }
 }
