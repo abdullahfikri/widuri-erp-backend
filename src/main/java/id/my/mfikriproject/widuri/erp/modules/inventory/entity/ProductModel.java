@@ -59,4 +59,14 @@ public class ProductModel extends AuditableModel {
     private Integer stockQuantity;
 
     private Integer minStockLevel;
+
+    public void updateFields(Map<String, Object> attributes,
+                              BigDecimal basePrice, BigDecimal labelPrice, BigDecimal floorPrice,
+                              Integer minStockLevel) {
+        this.attributes = attributes != null ? attributes : java.util.Collections.emptyMap();
+        this.basePrice = basePrice;
+        this.labelPrice = labelPrice;
+        this.floorPrice = floorPrice;
+        if (minStockLevel != null) this.minStockLevel = minStockLevel;
+    }
 }
