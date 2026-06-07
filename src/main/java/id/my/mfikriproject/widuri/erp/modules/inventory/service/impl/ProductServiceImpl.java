@@ -2,6 +2,7 @@ package id.my.mfikriproject.widuri.erp.modules.inventory.service.impl;
 
 import id.my.mfikriproject.widuri.erp.core.context.StoreContext;
 import id.my.mfikriproject.widuri.erp.core.entity.StoreModel;
+import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductResponse;
@@ -13,6 +14,7 @@ import id.my.mfikriproject.widuri.erp.modules.inventory.repository.ProductReposi
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductService;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.SkuGeneratorService;
 import jakarta.persistence.EntityManager;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -85,13 +87,10 @@ public class ProductServiceImpl implements ProductService {
                 .labelPrice(request.labelPrice())
                 .floorPrice(request.floorPrice())
                 .stockQuantity(stockQuantity)
+                .minStockLevel(0)
                 .build();
 
-        try {
-            return ProductResponse.from(productRepository.save(product));
-        } catch (DataIntegrityViolationException e) {
-            throw e;
-        }
+        return saveAndHandleDuplicateSku(product);
     }
 
     @Override
@@ -119,6 +118,20 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
         productRepository.delete(entity);
+    }
+
+    private static final String SKU_CONSTRAINT = "uq_m_product_sku";
+
+    private ProductResponse saveAndHandleDuplicateSku(ProductModel product) {
+        try {
+            return ProductResponse.from(productRepository.save(product));
+        } catch (DataIntegrityViolationException e) {
+            if (e.getCause() instanceof ConstraintViolationException cve
+                    && SKU_CONSTRAINT.equals(cve.getConstraintName())) {
+                throw new DuplicateEntityException("Product with this SKU already exists");
+            }
+            throw e;
+        }
     }
 
     private static void validatePriceHierarchy(BigDecimal basePrice, BigDecimal floorPrice,

@@ -13,7 +13,7 @@ import java.util.Map;
 public record CreateProductRequest(
         @NotNull Long productGroupId,
         @NotBlank @Size(max = 50) String skuAttribute,
-        Map<String, Object> attributes,
+        @Size(max = 50) Map<String, Object> attributes,
         @NotNull @DecimalMin("0.00") @Digits(integer = 13, fraction = 2) BigDecimal basePrice,
         @NotNull @DecimalMin("0.00") @Digits(integer = 13, fraction = 2) BigDecimal labelPrice,
         @NotNull @DecimalMin("0.00") @Digits(integer = 13, fraction = 2) BigDecimal floorPrice,

@@ -1,203 +1,150 @@
-# Code Review — branch develop/task-3.2-sku-generator
+# Code Review + Security Review — Task 3.3 (Product CRUD)
 
-**Reviewer:** Claude Code (automated multi-angle review)  
-**Date:** 2026-06-07  
-**Scope:** diff dari `main` ke `develop/task-3.2-sku-generator`
+**Branch:** `develop/task-3.3-product-crud`  
+**Date:** 2026-06-07
 
 ---
 
-## Findings
+## SECURITY
 
-### [BUG-1] HIGH — normalizeBrand() tidak trim whitespace
+### [SEC-1] CRITICAL — IDOR: ProductGroupId tidak divalidasi milik store yang sama
 
-**File:** `src/main/java/id/my/mfikriproject/widuri/erp/modules/inventory/service/impl/ProductGroupServiceImpl.java`  
-**Line:** 90
+**File:** `src/main/java/.../service/impl/ProductServiceImpl.java:63`
 
-**Masalah:**  
-`normalizeBrand()` hanya mengecek `isBlank()` tapi tidak memanggil `trim()`. Brand seperti `"  Shimano  "` (ada spasi di tepi) lolos `isBlank()` dan dikembalikan apa adanya. Akibatnya:
-- `isDuplicate()` mencari `"  Shimano  "` di DB, tidak cocok dengan `"Shimano"` yang sudah ada → tidak terdeteksi sebagai duplikat
-- Brand dengan spasi tersebut tersimpan di DB → dua product group dengan brand logis sama
-
-**Kode saat ini:**
 ```java
-private static String normalizeBrand(String brand) {
-    return (brand == null || brand.isBlank()) ? null : brand;
+ProductGroupModel group = productGroupRepository.findById(request.productGroupId())
+        .orElseThrow(() -> new EntityNotFoundException("ProductGroup not found"));
+```
+
+`findById()` mencari di semua store. Attacker dengan X-Store-Id: 1 bisa mengirim `productGroupId` milik Store 2 — produk dibuat di Store 1 tapi mereferensi ProductGroup milik Store 2.
+
+**Fix:** Ganti dengan query yang memvalidasi kepemilikan store:
+```java
+// Opsi A — tambahkan query di ProductGroupRepository:
+productGroupRepository.findByIdAndStoreId(request.productGroupId(), storeId)
+        .orElseThrow(() -> new EntityNotFoundException("ProductGroup not found"));
+```
+Atau jika ProductGroupModel tidak punya storeId langsung, validasi setelah load:
+```java
+if (!group.getStoreModel().getId().equals(storeId)) {
+    throw new EntityNotFoundException("ProductGroup not found");
 }
 ```
 
-**Fix:**
+---
+
+### [SEC-2] HIGH — attributes Map tidak ada batasan ukuran/kedalaman (DoS + stored XSS risk)
+
+**File:** `src/main/java/.../dto/CreateProductRequest.java` dan `UpdateProductRequest.java`
+
 ```java
-private static String normalizeBrand(String brand) {
-    return (brand == null || brand.isBlank()) ? null : brand.trim();
+Map<String, Object> attributes,  // tidak ada @Size, tidak ada validasi
+```
+
+- Payload 10MB dengan deeply nested JSON menguras heap → OutOfMemoryError
+- Nilai string dalam map tidak di-sanitize sebelum disimpan ke JSONB dan dikembalikan di response
+
+**Fix:** Tambahkan validasi ukuran. Untuk membatasi kedalaman JSON, konfigurasikan Jackson `DeserializationFeature.FAIL_ON_TOO_DEEP_NESTING` (Spring Boot 2.7+). Minimal batasi jumlah entries:
+```java
+@Size(max = 50) Map<String, Object> attributes,
+```
+Atau tambahkan custom validator yang memeriksa total keys dan panjang nilai.
+
+---
+
+### [SEC-3] MEDIUM — X-Store-Id header tidak dikaitkan dengan identitas user yang terautentikasi
+
+**File:** `src/main/java/.../core/StoreContextFilter.java`
+
+StoreContextFilter hanya memvalidasi bahwa `X-Store-Id` adalah integer positif — tidak memverifikasi bahwa user yang terautentikasi memang berhak atas store tersebut. Siapapun yang tahu store ID lain bisa mengakses datanya.
+
+**Catatan:** Ini adalah architectural gap yang lebih besar — membutuhkan Spring Security + user-store authorization. Daftar sebagai known limitation sampai auth layer diimplementasikan.
+
+---
+
+### [SEC-4] MEDIUM — Tidak ada autentikasi/otorisasi di endpoint
+
+**File:** `src/main/java/.../controller/ProductController.java:17`
+
+Tidak ada `@PreAuthorize`, Spring Security config, atau filter autentikasi yang terlihat. Semua endpoint accessible oleh siapapun yang bisa mengirim request valid.
+
+**Catatan:** Sama seperti SEC-3 — known gap, butuh implementasi auth layer terpisah.
+
+---
+
+## CODE QUALITY
+
+### [BUG-1] MEDIUM — Dead try-catch di create() tidak memberikan nilai apapun
+
+**File:** `src/main/java/.../service/impl/ProductServiceImpl.java:90`
+
+```java
+try {
+    return ProductResponse.from(productRepository.save(product));
+} catch (DataIntegrityViolationException e) {
+    throw e;  // ← no-op: identik dengan tidak ada try-catch sama sekali
 }
 ```
 
-**Test yang perlu ditambahkan:**
-- `create_brandWithPaddedSpaces_trimsBeforeSaveAndDuplicateCheck`
+Berbeda dengan `ProductGroupServiceImpl.saveAndHandleDuplicate()` yang memeriksa nama constraint dan mengkonversi ke `DuplicateEntityException`. Di sini exception hanya di-rethrow ke `handleDataIntegrity()` → 409 `DATA_CONFLICT` tanpa informasi lebih spesifik.
 
----
-
-### [BUG-2] MEDIUM — normalize() tidak menangani spasi ganda dan whitespace non-ASCII
-
-**File:** `src/main/java/id/my/mfikriproject/widuri/erp/modules/inventory/service/impl/SkuGeneratorServiceImpl.java`  
-**Line:** 29
-
-**Masalah (dua sub-issues dalam satu baris):**
-
-**a) Spasi ganda → double dash:**  
-`replace(' ', '-')` mengganti setiap karakter spasi secara individual. Input `"Spinning  Reel"` (dua spasi) menghasilkan `"SPINNING--REEL"` (dua dash) — SKU format rusak.
-
-**b) Tab/NBSP lolos filter:**  
-`replace(' ', '-')` hanya menangani ASCII space (U+0020). Tab (`\t`), non-breaking space (U+00A0), dan whitespace Unicode lainnya tidak diganti dan masuk ke SKU sebagai karakter tidak valid.
-
-**Kode saat ini:**
+**Fix opsi A** — Hapus try-catch (biarkan propagate alami):
 ```java
-return value.trim().toUpperCase().replace(' ', '-');
+return ProductResponse.from(productRepository.save(product));
 ```
 
-**Fix:**
+**Fix opsi B** — Tambahkan handling spesifik seperti ProductGroupServiceImpl:
 ```java
-return value.trim().toUpperCase().replaceAll("\\s+", "-");
-```
-`\s+` menangani semua whitespace Unicode dan meng-collapse spasi berurutan menjadi satu dash.
+private static final String SKU_CONSTRAINT = "uq_m_product_sku";
 
-**Test yang perlu ditambahkan:**
-- `generate_categoryWithMultipleConsecutiveSpaces_collapsesToSingleDash`
-- `normalize_tabCharacter_replacedWithDash` (opsional)
-
----
-
-### [EFFICIENCY-1] LOW — isDuplicate() adalah round trip redundan
-
-**File:** `src/main/java/id/my/mfikriproject/widuri/erp/modules/inventory/service/impl/ProductGroupServiceImpl.java`  
-**Lines:** 39–41 (di `create()`), 60–62 (di `update()`)
-
-**Masalah:**  
-`isDuplicate()` menjalankan SELECT query sebelum `save()`. Tapi `saveAndHandleDuplicate()` sudah menangkap `DataIntegrityViolationException` dan mengkonversinya ke `DuplicateEntityException`. Fast-path ini hanya menambah latency tanpa manfaat correctness:
-- `create()`: 2 DB queries per request (SELECT isDuplicate + INSERT)
-- `update()`: 3 DB queries per request (SELECT findById + SELECT isDuplicate + UPDATE)
-
-**Fix (opsional):** Hapus blok `if (isDuplicate(...)) throw ...` di kedua method, dan hapus method `isDuplicate()` beserta keempat derived query methods di `ProductGroupRepository`. `saveAndHandleDuplicate()` sudah menjadi satu-satunya guard yang diperlukan.
-
-> Catatan: Ini trade-off. Fast-path memberi error yang sedikit lebih cepat (sebelum write) dan menghindari write ke DB. Tapi mengorbankan 1 extra SELECT pada setiap request sukses. Keputusan di tangan developer.
-
----
-
-### [ARCHITECTURE-1] LOW — SkuRepository piggyback JpaRepository\<ProductModel\>
-
-**File:** `src/main/java/id/my/mfikriproject/widuri/erp/modules/inventory/repository/SkuRepository.java`  
-**Line:** 7
-
-**Masalah:**  
-```java
-public interface SkuRepository extends JpaRepository<ProductModel, Long>
-```
-`SkuRepository` hanya membutuhkan satu native scalar query — tidak ada entity management ProductModel yang dibutuhkan. Risiko nyata: ketika `ProductRepository` dibuat di Task 3.3 (juga `extends JpaRepository<ProductModel, Long>`), Spring akan gagal start dengan `NoUniqueBeanDefinitionException` karena ada dua JpaRepository untuk entity yang sama.
-
-**Fix:** Ganti dengan `JdbcClient` (Spring 6+) atau inject `EntityManager` langsung:
-```java
-@Repository
-public class SkuRepository {
-    private final JdbcClient jdbcClient;
-
-    public SkuRepository(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+try {
+    return ProductResponse.from(productRepository.save(product));
+} catch (DataIntegrityViolationException e) {
+    if (e.getCause() instanceof ConstraintViolationException cve
+            && SKU_CONSTRAINT.equals(cve.getConstraintName())) {
+        throw new DuplicateEntityException("Product with this SKU already exists");
     }
-
-    public String getNextSkuSequence() {
-        return jdbcClient.sql("SELECT get_next_sku_seq()")
-                .query(String.class)
-                .single();
-    }
+    throw e;
 }
 ```
-Update `SkuGeneratorServiceImpl` dan test-nya sesuai.
 
 ---
 
-### [DOCUMENTATION-1] LOW — @UniqueConstraint tidak mencerminkan kasus null brand
+### [BUG-2] LOW — minStockLevel tidak di-set saat create — bergantung pada DB default secara implisit
 
-**File:** `src/main/java/id/my/mfikriproject/widuri/erp/modules/inventory/entity/ProductGroupModel.java`  
-**Lines:** 18–22
+**File:** `src/main/java/.../service/impl/ProductServiceImpl.java:79`
 
-**Masalah:**  
-```java
-@UniqueConstraint(name = "uq_product_group_name_brand", columnNames = {"name", "brand"})
-```
-Annotation ini hanya menggambarkan constraint untuk baris di mana `brand IS NOT NULL`. Kasus `brand IS NULL` ditangani oleh partial index terpisah di `V2__Add_product_group_unique_constraints.sql`:
-```sql
-CREATE UNIQUE INDEX uq_product_group_name_null_brand ON m_product_group (name) WHERE brand IS NULL;
-```
-Developer yang hanya membaca entity akan salah sangka constraint sudah lengkap.
+`ProductModel.builder()` di `create()` tidak memanggil `.minStockLevel(...)`. Nilai default 5 datang dari DB schema, tapi tidak terlihat di kode. Jika `CreateProductRequest` memiliki `minStockLevel`, ini harus diteruskan ke builder. Jika memang tidak boleh di-set saat create, dokumentasikan bahwa nilai default adalah 5.
 
-**Fix:** Tambahkan komentar:
-```java
-// Constraint ini hanya mencakup baris dengan brand IS NOT NULL.
-// Kasus brand IS NULL ditangani oleh partial index uq_product_group_name_null_brand
-// di V2__Add_product_group_unique_constraints.sql — lihat juga isDuplicate() di service layer.
-@UniqueConstraint(name = "uq_product_group_name_brand", columnNames = {"name", "brand"})
-```
+**Fix:** Sesuaikan dengan keputusan desain:
+- Jika client boleh set: tambahkan `minStockLevel` ke `CreateProductRequest` dan `.minStockLevel(request.minStockLevel() != null ? request.minStockLevel() : 5)` di builder
+- Jika selalu default: tambahkan komentar `// minStockLevel defaults to 5 via DB column default`
 
 ---
 
-### [SIMPLIFICATION-1] — Asimetri populasi entity antara create() dan update()
+### [QUALITY-1] LOW — LazyInitializationException potensial di ProductResponse.from()
 
-**File:** `src/main/java/id/my/mfikriproject/widuri/erp/modules/inventory/service/impl/ProductGroupServiceImpl.java`  
-**Lines:** 43–49 (`create()`), 64 (`update()`)
+**File:** `src/main/java/.../dto/ProductResponse.java` (baris `model.getProductGroupModel().getId()`)
 
-**Masalah:**  
-`create()` membangun `ProductGroupModel` via builder inline dengan 4 field. `update()` memanggil `entity.updateFields(name, brand, category, description)`. Menambah field baru ke `ProductGroupRequest` di masa depan memerlukan update di dua tempat berbeda dengan cara yang berbeda.
+`productGroupModel` adalah `FetchType.LAZY`. Jika `from()` dipanggil di luar transaction (misalnya setelah detach), akan throw `LazyInitializationException`. Saat ini aman karena dipanggil langsung dalam service method, tapi rapuh jika pola pemanggilan berubah.
 
-**Fix:** Tambahkan static factory method di `ProductGroupModel`:
-```java
-public static ProductGroupModel from(ProductGroupRequest request, String normalizedBrand) {
-    return ProductGroupModel.builder()
-            .name(request.name())
-            .brand(normalizedBrand)
-            .category(request.category())
-            .description(request.description())
-            .build();
-}
-```
-Lalu `create()` cukup: `saveAndHandleDuplicate(ProductGroupModel.from(request, brand))`.
-
----
-
-### [SIMPLIFICATION-2] — Local variable tidak perlu di create()
-
-**File:** `src/main/java/id/my/mfikriproject/widuri/erp/modules/inventory/controller/ProductGroupController.java`  
-**Lines:** 46–49
-
-**Masalah:** `create()` menggunakan pola yang berbeda dari endpoint lain di controller yang sama:
-```java
-ProductGroupResponse response = productGroupService.create(request);  // local var
-return ResponseEntity.status(HttpStatus.CREATED).body(response);
-```
-Sedangkan `update()` dan `findById()` inline langsung.
-
-**Fix:**
-```java
-return ResponseEntity.status(HttpStatus.CREATED).body(productGroupService.create(request));
-```
+**Fix:** Pastikan `productGroupModel` selalu loaded sebelum mapping, atau gunakan `@EntityGraph` di repository query.
 
 ---
 
 ## Prioritas Perbaikan
 
-| ID | Severity | Bisa di-fix segera? |
-|----|----------|---------------------|
-| BUG-1 | HIGH | Ya — 1 baris |
-| BUG-2 | MEDIUM | Ya — 1 baris |
-| ARCHITECTURE-1 | LOW | Sebaiknya sebelum Task 3.3 dibuat |
-| EFFICIENCY-1 | LOW | Opsional, trade-off |
-| DOCUMENTATION-1 | LOW | Ya — komentar saja |
-| SIMPLIFICATION-1 | LOW | Opsional |
-| SIMPLIFICATION-2 | LOW | Ya — 1 baris |
+| ID | Severity | Fix sekarang? |
+|----|----------|---------------|
+| SEC-1 | CRITICAL | **Ya — sebelum merge** |
+| SEC-2 | HIGH | Ya — tambahkan `@Size(max=50)` minimal |
+| BUG-1 | MEDIUM | Ya — hapus dead try-catch atau lengkapi handling |
+| BUG-2 | LOW | Ya — dokumentasikan atau tambahkan ke request |
+| SEC-3/4 | MEDIUM | Noted — butuh auth layer terpisah |
+| QUALITY-1 | LOW | Opsional — aman untuk sekarang |
 
 ## Verifikasi setelah fix
 
 ```bash
 ./mvnw test
 ```
-
-Semua test yang ada harus tetap pass. BUG-1 dan BUG-2 memerlukan test case baru agar tidak regresi.
