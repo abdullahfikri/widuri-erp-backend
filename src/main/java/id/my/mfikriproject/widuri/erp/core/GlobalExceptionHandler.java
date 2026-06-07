@@ -1,14 +1,17 @@
 package id.my.mfikriproject.widuri.erp.core;
 
 import id.my.mfikriproject.widuri.erp.core.dto.ErrorResponse;
+import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
 
@@ -25,6 +28,18 @@ public class GlobalExceptionHandler {
         return ErrorResponse.of("VALIDATION_FAILED", "Request validation failed", details);
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return ErrorResponse.of("INVALID_INPUT", "Invalid path parameter type");
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleNotReadable(HttpMessageNotReadableException ex) {
+        return ErrorResponse.of("INVALID_INPUT", "Malformed or unreadable request body");
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
     public ErrorResponse handleIllegalArgument(IllegalArgumentException ex) {
@@ -36,6 +51,13 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleDataIntegrity(DataIntegrityViolationException ex) {
         return ErrorResponse.of("DATA_CONFLICT", "Data conflict or duplicate entry");
+    }
+
+    @ExceptionHandler(DuplicateEntityException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleDuplicate(DuplicateEntityException ex) {
+        // ex.getMessage() diteruskan by design — kontrak DuplicateEntityException menjamin pesannya aman untuk client
+        return ErrorResponse.of("DUPLICATE_ENTITY", ex.getMessage());
     }
 
     @ExceptionHandler(EntityNotFoundException.class)
