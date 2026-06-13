@@ -185,7 +185,6 @@ class StockAdjustmentServiceTest {
         given(group.getId()).willReturn(10L);
         given(product.getSku()).willReturn("SKU-001");
         given(product.getAttributes()).willReturn(Map.of());
-        given(product.getBasePrice()).willReturn(new BigDecimal("100.00"));
         given(product.getLabelPrice()).willReturn(new BigDecimal("200.00"));
         given(product.getFloorPrice()).willReturn(new BigDecimal("150.00"));
         given(product.getStockQuantity()).willReturn(stockQuantity);

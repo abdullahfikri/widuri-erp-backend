@@ -38,8 +38,7 @@ class StockAdjustmentControllerTest {
 
     private ProductResponse productResponse() {
         return new ProductResponse(1L, 10L, "SKU-001", Map.of(),
-                new BigDecimal("100.00"), new BigDecimal("200.00"),
-                new BigDecimal("150.00"), 60, 2, null, null);
+                new BigDecimal("200.00"), new BigDecimal("150.00"), 60, 2, null, null);
     }
 
     // --- stock-in ---
@@ -118,8 +117,7 @@ class StockAdjustmentControllerTest {
     @Test
     void out_validRequest_returns200WithUpdatedStock() {
         ProductResponse response = new ProductResponse(1L, 10L, "SKU-001", Map.of(),
-                new BigDecimal("100.00"), new BigDecimal("200.00"),
-                new BigDecimal("150.00"), 25, 2, null, null);
+                new BigDecimal("200.00"), new BigDecimal("150.00"), 25, 2, null, null);
         given(stockAdjustmentService.adjustOut(eq(1L), any(StockAdjustRequest.class)))
                 .willReturn(response);
 

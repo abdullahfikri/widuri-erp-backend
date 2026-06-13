@@ -78,7 +78,6 @@ class ProductServiceTest {
         given(group.getId()).willReturn(10L);
         given(model.getSku()).willReturn("SKU-001");
         given(model.getAttributes()).willReturn(Map.of("color", "Red"));
-        given(model.getBasePrice()).willReturn(new BigDecimal("100.00"));
         given(model.getLabelPrice()).willReturn(new BigDecimal("200.00"));
         given(model.getFloorPrice()).willReturn(new BigDecimal("150.00"));
         given(model.getStockQuantity()).willReturn(5);
@@ -96,7 +95,6 @@ class ProductServiceTest {
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.productGroupId()).isEqualTo(10L);
         assertThat(response.sku()).isEqualTo("SKU-001");
-        assertThat(response.basePrice()).isEqualByComparingTo("100.00");
     }
 
     // --- findById ---
@@ -110,7 +108,6 @@ class ProductServiceTest {
         given(group.getId()).willReturn(10L);
         given(model.getSku()).willReturn("SKU-001");
         given(model.getAttributes()).willReturn(Map.of());
-        given(model.getBasePrice()).willReturn(new BigDecimal("100.00"));
         given(model.getLabelPrice()).willReturn(new BigDecimal("200.00"));
         given(model.getFloorPrice()).willReturn(new BigDecimal("150.00"));
         given(model.getStockQuantity()).willReturn(5);
@@ -160,7 +157,6 @@ class ProductServiceTest {
         given(savedGroup.getId()).willReturn(10L);
         given(saved.getSku()).willReturn("SHIMANO-REEL-SILVER-001");
         given(saved.getAttributes()).willReturn(Map.of("color", "Red"));
-        given(saved.getBasePrice()).willReturn(new BigDecimal("100.00"));
         given(saved.getLabelPrice()).willReturn(new BigDecimal("200.00"));
         given(saved.getFloorPrice()).willReturn(new BigDecimal("150.00"));
         given(saved.getStockQuantity()).willReturn(5);
@@ -192,7 +188,6 @@ class ProductServiceTest {
         given(savedGroup.getId()).willReturn(10L);
         given(saved.getSku()).willReturn("STRADIC-REEL-SILVER-001");
         given(saved.getAttributes()).willReturn(Map.of("color", "Red"));
-        given(saved.getBasePrice()).willReturn(new BigDecimal("100.00"));
         given(saved.getLabelPrice()).willReturn(new BigDecimal("200.00"));
         given(saved.getFloorPrice()).willReturn(new BigDecimal("150.00"));
         given(saved.getStockQuantity()).willReturn(5);
@@ -225,7 +220,6 @@ class ProductServiceTest {
         given(savedGroup.getId()).willReturn(10L);
         given(saved.getSku()).willReturn("SHIMANO-STRADIC-SILVER-001");
         given(saved.getAttributes()).willReturn(Map.of("color", "Red"));
-        given(saved.getBasePrice()).willReturn(new BigDecimal("100.00"));
         given(saved.getLabelPrice()).willReturn(new BigDecimal("200.00"));
         given(saved.getFloorPrice()).willReturn(new BigDecimal("150.00"));
         given(saved.getStockQuantity()).willReturn(5);
@@ -300,7 +294,6 @@ class ProductServiceTest {
         given(saved.getProductGroupModel()).willReturn(savedGroup);
         given(saved.getSku()).willReturn("SKU-001");
         given(saved.getAttributes()).willReturn(Map.of());
-        given(saved.getBasePrice()).willReturn(new BigDecimal("100.00"));
         given(saved.getLabelPrice()).willReturn(new BigDecimal("200.00"));
         given(saved.getFloorPrice()).willReturn(new BigDecimal("150.00"));
         given(saved.getStockQuantity()).willReturn(42);
@@ -333,7 +326,6 @@ class ProductServiceTest {
         given(saved.getProductGroupModel()).willReturn(savedGroup);
         given(saved.getSku()).willReturn("SKU-001");
         given(saved.getAttributes()).willReturn(Map.of());
-        given(saved.getBasePrice()).willReturn(new BigDecimal("100.00"));
         given(saved.getLabelPrice()).willReturn(new BigDecimal("200.00"));
         given(saved.getFloorPrice()).willReturn(new BigDecimal("150.00"));
         given(saved.getStockQuantity()).willReturn(0);
@@ -366,7 +358,6 @@ class ProductServiceTest {
         given(saved.getProductGroupModel()).willReturn(savedGroup);
         given(saved.getSku()).willReturn("SKU-001");
         given(saved.getAttributes()).willReturn(Collections.emptyMap());
-        given(saved.getBasePrice()).willReturn(new BigDecimal("100.00"));
         given(saved.getLabelPrice()).willReturn(new BigDecimal("200.00"));
         given(saved.getFloorPrice()).willReturn(new BigDecimal("150.00"));
         given(saved.getStockQuantity()).willReturn(5);
@@ -394,7 +385,6 @@ class ProductServiceTest {
         given(groupMock.getId()).willReturn(10L);
         given(entityMock.getSku()).willReturn("ORIGINAL-SKU");
         given(entityMock.getAttributes()).willReturn(Map.of("color", "Blue"));
-        given(entityMock.getBasePrice()).willReturn(new BigDecimal("120.00"));
         given(entityMock.getLabelPrice()).willReturn(new BigDecimal("250.00"));
         given(entityMock.getFloorPrice()).willReturn(new BigDecimal("180.00"));
         given(entityMock.getStockQuantity()).willReturn(5);
@@ -408,7 +398,6 @@ class ProductServiceTest {
                 .call(() -> service.update(2L, request));
 
         assertThat(result.sku()).isEqualTo("ORIGINAL-SKU"); // SKU unchanged
-        assertThat(result.basePrice()).isEqualByComparingTo("120.00");
         assertThat(result.labelPrice()).isEqualByComparingTo("250.00");
         assertThat(result.floorPrice()).isEqualByComparingTo("180.00");
         assertThat(result.minStockLevel()).isEqualTo(3);

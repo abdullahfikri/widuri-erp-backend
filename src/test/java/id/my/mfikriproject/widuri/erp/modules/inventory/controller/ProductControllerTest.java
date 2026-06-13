@@ -58,8 +58,7 @@ class ProductControllerTest {
     @Test
     void findAll_returnsPagedContent() {
         ProductResponse response = new ProductResponse(1L, 10L, "SKU-001", Map.of(),
-                new BigDecimal("100.00"), new BigDecimal("200.00"),
-                new BigDecimal("150.00"), 5, 2, null, null);
+                new BigDecimal("200.00"), new BigDecimal("150.00"), 5, 2, null, null);
         given(productService.findAll(any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(response)));
 
@@ -84,8 +83,7 @@ class ProductControllerTest {
     @Test
     void findById_found_returns200WithBody() {
         ProductResponse response = new ProductResponse(1L, 10L, "SKU-001", Map.of("color", "Red"),
-                new BigDecimal("100.00"), new BigDecimal("200.00"),
-                new BigDecimal("150.00"), 5, 2, null, null);
+                new BigDecimal("200.00"), new BigDecimal("150.00"), 5, 2, null, null);
         given(productService.findById(1L)).willReturn(response);
 
         MvcTestResult result = mvc.get().uri(URL + "/1").header(STORE_ID_HEADER, "1").exchange();
@@ -123,7 +121,7 @@ class ProductControllerTest {
     @Test
     void create_validRequest_returns201WithBody() {
         ProductResponse response = new ProductResponse(1L, 10L, "SHIMANO-REEL-SILVER-001",
-                Map.of("color", "Red"), new BigDecimal("100.00"), new BigDecimal("200.00"),
+                Map.of("color", "Red"), new BigDecimal("200.00"),
                 new BigDecimal("150.00"), 5, null, null, null);
         given(productService.create(any(CreateProductRequest.class))).willReturn(response);
 
@@ -142,8 +140,7 @@ class ProductControllerTest {
     @Test
     void create_delegatesToServiceWithCorrectFields() {
         ProductResponse response = new ProductResponse(1L, 10L, "SKU-001", null,
-                new BigDecimal("100.00"), new BigDecimal("200.00"),
-                new BigDecimal("150.00"), 5, null, null, null);
+                new BigDecimal("200.00"), new BigDecimal("150.00"), 5, null, null, null);
         given(productService.create(any(CreateProductRequest.class))).willReturn(response);
 
         mvc.post().uri(URL)
@@ -232,8 +229,7 @@ class ProductControllerTest {
     @Test
     void update_validRequest_returns200() {
         ProductResponse response = new ProductResponse(1L, 10L, "SKU-001", Map.of("color", "Blue"),
-                new BigDecimal("120.00"), new BigDecimal("250.00"),
-                new BigDecimal("180.00"), 5, 3, null, null);
+                new BigDecimal("250.00"), new BigDecimal("180.00"), 5, 3, null, null);
         given(productService.update(any(Long.class), any(UpdateProductRequest.class))).willReturn(response);
 
         MvcTestResult result = mvc.put().uri(URL + "/1")
@@ -244,7 +240,6 @@ class ProductControllerTest {
 
         assertThat(result).hasStatusOk();
         assertThat(result).bodyJson().extractingPath("$.attributes.color").asString().isEqualTo("Blue");
-        assertThat(result).bodyJson().extractingPath("$.basePrice").asNumber().isEqualTo(120.00);
     }
 
     @Test
