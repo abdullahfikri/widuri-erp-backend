@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -18,6 +19,13 @@ import java.util.List;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+    private static final String INVALID_INPUT_CODE = "INVALID_INPUT";
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleConflict(ObjectOptimisticLockingFailureException ex) {
+        return ErrorResponse.of("OPTIMISTIC_LOCK_CONFLICT","Product was modified by another request. Please refresh and try again");
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -31,20 +39,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        return ErrorResponse.of("INVALID_INPUT", "Invalid path parameter type");
+        return ErrorResponse.of(INVALID_INPUT_CODE, "Invalid path parameter type");
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleNotReadable(HttpMessageNotReadableException ex) {
-        return ErrorResponse.of("INVALID_INPUT", "Malformed or unreadable request body");
+        return ErrorResponse.of(INVALID_INPUT_CODE, "Malformed or unreadable request body");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
     public ErrorResponse handleIllegalArgument(IllegalArgumentException ex) {
         // Pesan error sengaja tidak menyertakan ex.getMessage() — bisa mengandung nilai raw dari DB
-        return ErrorResponse.of("INVALID_INPUT", "Request contains invalid or unprocessable data");
+        return ErrorResponse.of(INVALID_INPUT_CODE, "Request contains invalid or unprocessable data");
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

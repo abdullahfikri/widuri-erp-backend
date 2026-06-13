@@ -58,6 +58,9 @@ public class ProductModel extends AuditableModel {
     @Setter(AccessLevel.PACKAGE)
     private Integer stockQuantity;
 
+    @Version
+    private Integer version;
+
     private Integer minStockLevel;
 
     public void updateFields(Map<String, Object> attributes,
