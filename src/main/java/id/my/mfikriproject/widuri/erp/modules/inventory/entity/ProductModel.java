@@ -58,5 +58,32 @@ public class ProductModel extends AuditableModel {
     @Setter(AccessLevel.PACKAGE)
     private Integer stockQuantity;
 
+    @Version
+    private Integer version;
+
     private Integer minStockLevel;
+
+    public void updateFields(Map<String, Object> attributes,
+                              BigDecimal basePrice, BigDecimal labelPrice, BigDecimal floorPrice,
+                              Integer minStockLevel) {
+        this.attributes = attributes != null ? attributes : java.util.Collections.emptyMap();
+        this.basePrice = basePrice;
+        this.labelPrice = labelPrice;
+        this.floorPrice = floorPrice;
+        if (minStockLevel != null) this.minStockLevel = minStockLevel;
+    }
+
+    public void addStock(int delta) {
+        int current = this.stockQuantity != null ? this.stockQuantity : 0;
+        this.stockQuantity = current + delta;
+    }
+
+    public void subtractStock(int quantity) {
+        int current = this.stockQuantity != null ? this.stockQuantity : 0;
+        if (current < quantity) {
+            throw new IllegalArgumentException(
+                    "Insufficient stock: " + current + " available, " + quantity + " requested");
+        }
+        this.stockQuantity = current - quantity;
+    }
 }

@@ -40,9 +40,7 @@ public class ProductGroupController {
     public ResponseEntity<ProductGroupResponse> create(
             @RequestBody @Valid ProductGroupRequest request
     ) {
-        ProductGroupResponse response = productGroupService.create(request);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(productGroupService.create(request));
     }
 
     @PutMapping(value = "/{id}",

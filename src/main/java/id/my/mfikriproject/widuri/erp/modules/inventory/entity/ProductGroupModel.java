@@ -15,6 +15,9 @@ import java.util.List;
 @Entity
 @Table(
         name = "m_product_group",
+        // Constraint ini hanya mencakup baris dengan brand IS NOT NULL.
+        // Kasus brand IS NULL ditangani oleh partial index uq_product_group_name_null_brand
+        // di V2__Add_product_group_unique_constraints.sql — lihat juga isDuplicate() di service layer.
         uniqueConstraints = @UniqueConstraint(
                 name = "uq_product_group_name_brand",
                 columnNames = {"name", "brand"}

@@ -1,0 +1,1 @@
+ALTER TABLE m_product ADD COLUMN version INT NOT NULL DEFAULT 0;

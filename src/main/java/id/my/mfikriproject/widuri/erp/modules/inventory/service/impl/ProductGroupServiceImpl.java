@@ -87,7 +87,7 @@ public class ProductGroupServiceImpl implements ProductGroupService {
     }
 
     private static String normalizeBrand(String brand) {
-        return (brand == null || brand.isBlank()) ? null : brand;
+        return (brand == null || brand.isBlank()) ? null : brand.trim();
     }
 
     private boolean isDuplicate(String name, String brand, Long excludeId) {

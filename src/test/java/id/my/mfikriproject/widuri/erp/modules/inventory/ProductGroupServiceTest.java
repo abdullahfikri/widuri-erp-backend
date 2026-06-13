@@ -291,6 +291,23 @@ class ProductGroupServiceTest {
     }
 
     @Test
+    void create_brandWithPaddedSpaces_trimsBeforeSaveAndDuplicateCheck() {
+        ProductGroupRequest request = new ProductGroupRequest("Reel Spinning", "  Shimano  ", "Reel", "Desc");
+        given(repository.existsByNameAndBrand("Reel Spinning", "Shimano")).willReturn(false);
+        ProductGroupModel saved = mock(ProductGroupModel.class);
+        given(saved.getCreatedAt()).willReturn(null);
+        given(saved.getUpdatedAt()).willReturn(null);
+        given(repository.save(any())).willReturn(saved);
+
+        service.create(request);
+
+        verify(repository).existsByNameAndBrand("Reel Spinning", "Shimano");
+        ArgumentCaptor<ProductGroupModel> captor = ArgumentCaptor.forClass(ProductGroupModel.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getBrand()).isEqualTo("Shimano");
+    }
+
+    @Test
     void update_emptyBrand_usesNullBranchForDuplicateCheck() {
         ProductGroupModel entity = mock(ProductGroupModel.class);
         given(repository.findById(1L)).willReturn(Optional.of(entity));
