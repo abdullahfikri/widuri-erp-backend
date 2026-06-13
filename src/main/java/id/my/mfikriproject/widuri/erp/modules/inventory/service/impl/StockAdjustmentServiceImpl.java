@@ -32,8 +32,8 @@ public class StockAdjustmentServiceImpl implements StockAdjustmentService {
                 .findByIdAndStoreModelIdForUpdate(productId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
-        setStockNotes(request.reason());
         product.addStock(request.quantity());
+        setStockNotes(request.reason());
         return ProductResponse.from(productRepository.save(product));
     }
 
@@ -47,8 +47,8 @@ public class StockAdjustmentServiceImpl implements StockAdjustmentService {
                 .findByIdAndStoreModelIdForUpdate(productId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
-        setStockNotes(request.reason());
         product.subtractStock(request.quantity());
+        setStockNotes(request.reason());
         return ProductResponse.from(productRepository.save(product));
     }
 
