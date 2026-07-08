@@ -3,12 +3,15 @@ package id.my.mfikriproject.widuri.erp.modules.sales.service.impl;
 import id.my.mfikriproject.widuri.erp.core.context.StoreContext;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductCostSnapshot;
+import id.my.mfikriproject.widuri.erp.modules.inventory.entity.ProductModel;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.StockAdjustRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.ProductService;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.StockAdjustmentService;
 import id.my.mfikriproject.widuri.erp.modules.sales.dto.CheckoutDetailRequest;
 import id.my.mfikriproject.widuri.erp.modules.sales.dto.CheckoutRequest;
 import id.my.mfikriproject.widuri.erp.modules.sales.dto.CheckoutResponse;
+import id.my.mfikriproject.widuri.erp.modules.sales.dto.SalesDetailResponse;
+import id.my.mfikriproject.widuri.erp.modules.sales.dto.SalesSummaryResponse;
 import id.my.mfikriproject.widuri.erp.modules.sales.entity.SalesDetailModel;
 import id.my.mfikriproject.widuri.erp.modules.sales.entity.SalesModel;
 import id.my.mfikriproject.widuri.erp.modules.sales.enums.PaymentMethodEnum;
@@ -24,16 +27,22 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -442,6 +451,88 @@ class SalesServiceImplTest {
         assertThat(second.subtotal()).isEqualByComparingTo("300.00");
     }
 
+    // ── getHistory ──────────────────────────────────────────
+
+    @Test
+    void getHistory_storeContextNotBound_throwsIllegalStateException() {
+        assertThatThrownBy(() -> service.getHistory(LocalDate.now(), LocalDate.now(), PageRequest.of(0, 20)))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void getHistory_returnsPageFromRepository() {
+        SalesModel sale = createSale("INV-01-20260708-0001", PaymentMethodEnum.QRIS);
+        Page<SalesModel> page = new PageImpl<>(List.of(sale));
+
+        given(salesRepository.findByStoreAndDateRange(any(), any(), any(), any()))
+                .willReturn(page);
+
+        Page<SalesSummaryResponse> result = ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
+                .call(() -> service.getHistory(
+                        LocalDate.of(2026, 7, 1),
+                        LocalDate.of(2026, 7, 8),
+                        PageRequest.of(0, 20)));
+
+        assertThat(result).hasSize(1);
+        SalesSummaryResponse summary = result.getContent().getFirst();
+        assertThat(summary.invoiceNumber()).isEqualTo("INV-01-20260708-0001");
+        assertThat(summary.paymentMethod()).isEqualTo(PaymentMethodEnum.QRIS);
+    }
+
+    @Test
+    void getHistory_dateRange_isConvertedCorrectly() {
+        given(salesRepository.findByStoreAndDateRange(any(), any(), any(), any()))
+                .willReturn(Page.empty());
+
+        ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
+                .call(() -> service.getHistory(
+                        LocalDate.of(2026, 7, 1),
+                        LocalDate.of(2026, 7, 8),
+                        PageRequest.of(0, 20)));
+
+        ArgumentCaptor<OffsetDateTime> fromCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
+        ArgumentCaptor<OffsetDateTime> toCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
+        verify(salesRepository).findByStoreAndDateRange(eq(STORE_ID), fromCaptor.capture(), toCaptor.capture(), any());
+
+        // from is start-of-day July 1, to is start-of-day July 9 (exclusive end)
+        assertThat(fromCaptor.getValue().toLocalDate()).isEqualTo(LocalDate.of(2026, 7, 1));
+        assertThat(toCaptor.getValue().toLocalDate()).isEqualTo(LocalDate.of(2026, 7, 9));
+    }
+
+    // ── getByInvoiceNumber ──────────────────────────────────
+
+    @Test
+    void getByInvoiceNumber_storeContextNotBound_throwsIllegalStateException() {
+        assertThatThrownBy(() -> service.getByInvoiceNumber("INV-01-20260708-0001"))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void getByInvoiceNumber_found_returnsDetailWithItems() {
+        SalesModel sale = createSale("INV-01-20260708-0042", PaymentMethodEnum.TRANSFER);
+        given(salesRepository.findByStoreModelIdAndInvoiceNumber(STORE_ID, "INV-01-20260708-0042"))
+                .willReturn(Optional.of(sale));
+
+        SalesDetailResponse detail = ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
+                .call(() -> service.getByInvoiceNumber("INV-01-20260708-0042"));
+
+        assertThat(detail.invoiceNumber()).isEqualTo("INV-01-20260708-0042");
+        assertThat(detail.paymentMethod()).isEqualTo(PaymentMethodEnum.TRANSFER);
+        assertThat(detail.totalAmount()).isEqualByComparingTo("999.99");
+        assertThat(detail.items()).hasSize(2);
+    }
+
+    @Test
+    void getByInvoiceNumber_notFound_throwsEntityNotFoundException() {
+        given(salesRepository.findByStoreModelIdAndInvoiceNumber(STORE_ID, "INV-NONEXISTENT"))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
+                .call(() -> service.getByInvoiceNumber("INV-NONEXISTENT")))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("INV-NONEXISTENT");
+    }
+
     // --- helpers ---
 
     private void stubHappyPath() {
@@ -450,5 +541,37 @@ class SalesServiceImplTest {
         given(salesDetailRepository.save(any(SalesDetailModel.class))).willAnswer(inv -> inv.getArgument(0));
         given(stockAdjustmentService.adjustOut(any(), any())).willReturn(null);
         given(entityManager.getReference(any(), any())).willReturn(null);
+    }
+
+    private SalesModel createSale(String invoiceNumber, PaymentMethodEnum paymentMethod) {
+        SalesModel sale = SalesModel.builder()
+                .invoiceNumber(invoiceNumber)
+                .transactionDate(OffsetDateTime.now())
+                .totalAmount(new BigDecimal("999.99"))
+                .paymentMethod(paymentMethod)
+                .build();
+
+        // Minimal ProductModel mock for SalesLineItemResponse.from() which reads id + sku.
+        var mockProduct = mock(ProductModel.class);
+        given(mockProduct.getId()).willReturn(1L);
+        given(mockProduct.getSku()).willReturn("SKU-001");
+
+        var detail1 = SalesDetailModel.builder()
+                .productModel(mockProduct)
+                .quantity(2).soldPriceAtTime(new BigDecimal("500.00"))
+                .subtotal(new BigDecimal("1000.00")).build();
+        var detail2 = SalesDetailModel.builder()
+                .productModel(mockProduct)
+                .quantity(1).soldPriceAtTime(new BigDecimal("999.99"))
+                .subtotal(new BigDecimal("999.99")).build();
+
+        try {
+            var detailsField = SalesModel.class.getDeclaredField("details");
+            detailsField.setAccessible(true);
+            detailsField.set(sale, List.of(detail1, detail2));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return sale;
     }
 }
