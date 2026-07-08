@@ -1,4 +1,4 @@
-package id.my.mfikriproject.widuri.erp.core;
+package id.my.mfikriproject.widuri.erp.core.filter;
 
 import id.my.mfikriproject.widuri.erp.core.context.StoreContext;
 import id.my.mfikriproject.widuri.erp.core.dto.ErrorResponse;
