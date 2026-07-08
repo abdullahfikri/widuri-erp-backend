@@ -2,6 +2,7 @@ package id.my.mfikriproject.widuri.erp.modules.sales.service.impl;
 
 import id.my.mfikriproject.widuri.erp.core.context.StoreContext;
 import id.my.mfikriproject.widuri.erp.core.entity.StoreModel;
+import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductCostSnapshot;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.StockAdjustRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.entity.ProductModel;
@@ -11,6 +12,8 @@ import id.my.mfikriproject.widuri.erp.modules.sales.dto.CheckoutDetailRequest;
 import id.my.mfikriproject.widuri.erp.modules.sales.dto.CheckoutItemResponse;
 import id.my.mfikriproject.widuri.erp.modules.sales.dto.CheckoutRequest;
 import id.my.mfikriproject.widuri.erp.modules.sales.dto.CheckoutResponse;
+import id.my.mfikriproject.widuri.erp.modules.sales.dto.SalesDetailResponse;
+import id.my.mfikriproject.widuri.erp.modules.sales.dto.SalesSummaryResponse;
 import id.my.mfikriproject.widuri.erp.modules.sales.entity.SalesDetailModel;
 import id.my.mfikriproject.widuri.erp.modules.sales.entity.SalesModel;
 import id.my.mfikriproject.widuri.erp.modules.sales.repository.SalesDetailRepository;
@@ -18,11 +21,15 @@ import id.my.mfikriproject.widuri.erp.modules.sales.repository.SalesRepository;
 import id.my.mfikriproject.widuri.erp.modules.sales.service.InvoiceNumberGenerator;
 import id.my.mfikriproject.widuri.erp.modules.sales.service.SalesService;
 import jakarta.persistence.EntityManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -125,6 +132,29 @@ public class SalesServiceImpl implements SalesService {
                 .totalAmount(totalAmount)
                 .items(itemResponseList)
                 .build();
+    }
+
+    @Override
+    public Page<SalesSummaryResponse> getHistory(LocalDate from, LocalDate to, Pageable pageable) {
+        StoreContext.assertBound();
+        Integer storeId = StoreContext.STORE_ID.get();
+
+        OffsetDateTime fromDateTime = from.atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime();
+        OffsetDateTime toDateTime = to.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime();
+
+        return salesRepository.findByStoreAndDateRange(storeId, fromDateTime, toDateTime, pageable)
+                .map(SalesSummaryResponse::from);
+    }
+
+    @Override
+    public SalesDetailResponse getByInvoiceNumber(String invoiceNumber) {
+        StoreContext.assertBound();
+        Integer storeId = StoreContext.STORE_ID.get();
+
+        return salesRepository.findByStoreModelIdAndInvoiceNumber(storeId, invoiceNumber)
+                .map(SalesDetailResponse::from)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Sale not found: " + invoiceNumber));
     }
 
     // Holds per-line data computed during validation so details are persisted only after
