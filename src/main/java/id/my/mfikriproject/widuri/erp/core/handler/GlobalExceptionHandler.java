@@ -1,4 +1,4 @@
-package id.my.mfikriproject.widuri.erp.core;
+package id.my.mfikriproject.widuri.erp.core.handler;
 
 import id.my.mfikriproject.widuri.erp.core.dto.ErrorResponse;
 import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
