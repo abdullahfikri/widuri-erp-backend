@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -46,4 +47,7 @@ public class SalesModel {
     // Set by service to OffsetDateTime.now() — never accepted from client input
     @Column(updatable = false)
     private OffsetDateTime transactionDate;
+
+    @OneToMany(mappedBy = "salesModel", cascade = CascadeType.PERSIST)
+    List<SalesDetailModel> details;
 }
