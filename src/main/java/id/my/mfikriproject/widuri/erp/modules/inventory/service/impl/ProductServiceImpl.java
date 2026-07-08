@@ -5,6 +5,7 @@ import id.my.mfikriproject.widuri.erp.core.entity.StoreModel;
 import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductRequest;
+import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductCostSnapshot;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductResponse;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.UpdateProductRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.entity.ProductGroupModel;
@@ -56,6 +57,15 @@ public class ProductServiceImpl implements ProductService {
         Integer storeId = StoreContext.STORE_ID.get();
         return productRepository.findByIdAndStoreModelId(id, storeId)
                 .map(ProductResponse::from)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+    }
+
+    @Override
+    public ProductCostSnapshot getCostSnapshot(Long id) {
+        StoreContext.assertBound();
+        Integer storeId = StoreContext.STORE_ID.get();
+        return productRepository.findByIdAndStoreModelId(id, storeId)
+                .map(ProductCostSnapshot::from)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     }
 
