@@ -36,14 +36,13 @@ public class StoreContextFilter extends OncePerRequestFilter {
             throws IOException, ServletException {
         String header = request.getHeader("X-Store-Id");
 
-
-
         boolean isApiPath = request.getRequestURI().startsWith(apiPathPrefix);
 
         if (header == null) {
             if (isApiPath) {
                 log.warn("Missing X-Store-Id header on API path: {}", request.getRequestURI());
-                sendError(response, "MISSING_STORE_ID", "X-Store-Id header is required for API endpoints");
+                sendError(response, HttpServletResponse.SC_BAD_REQUEST, "MISSING_STORE_ID",
+                        "X-Store-Id header is required for API endpoints");
                 return;
             }
             chain.doFilter(request, response);
@@ -55,13 +54,15 @@ public class StoreContextFilter extends OncePerRequestFilter {
             storeId = Integer.parseInt(header.strip());
         } catch (NumberFormatException _) {
             log.warn("Invalid X-Store-Id header: '{}'", header.replaceAll("[\r\n]", "_"));
-            sendError(response, "INVALID_STORE_ID", "X-Store-Id must be a valid integer");
+            sendError(response, HttpServletResponse.SC_BAD_REQUEST, "INVALID_STORE_ID",
+                    "X-Store-Id must be a valid integer");
             return;
         }
 
         if (storeId <= 0) {
             log.warn("Non-positive X-Store-Id header: {}", storeId);
-            sendError(response, "INVALID_STORE_ID", "X-Store-Id must be a positive integer");
+            sendError(response, HttpServletResponse.SC_BAD_REQUEST, "INVALID_STORE_ID",
+                    "X-Store-Id must be a positive integer");
             return;
         }
 
@@ -77,11 +78,15 @@ public class StoreContextFilter extends OncePerRequestFilter {
         }
     }
 
-    private void sendError(ServletResponse response, String code, String message) throws IOException {
+    private void sendError(ServletResponse response, int status, String code, String message) {
         HttpServletResponse httpResponse = (HttpServletResponse) response;
-        httpResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        httpResponse.setStatus(status);
         httpResponse.setContentType(MediaType.APPLICATION_JSON_VALUE);
         httpResponse.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        objectMapper.writeValue(httpResponse.getWriter(), ErrorResponse.of(code, message));
+        try {
+            objectMapper.writeValue(httpResponse.getWriter(), ErrorResponse.of(code, message));
+        } catch (IOException e) {
+            log.error("Failed to write error response", e);
+        }
     }
 }
