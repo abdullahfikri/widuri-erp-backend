@@ -3,6 +3,8 @@ package id.my.mfikriproject.widuri.erp.modules.inventory.entity;
 import id.my.mfikriproject.widuri.erp.core.entity.AuditableModel;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -12,6 +14,7 @@ import java.util.List;
 @Getter
 @SuperBuilder
 @NoArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(
         name = "m_product_group",

@@ -4,6 +4,7 @@ import id.my.mfikriproject.widuri.erp.core.entity.AuditableModel;
 import id.my.mfikriproject.widuri.erp.core.entity.StoreModel;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -17,6 +18,7 @@ import java.util.Map;
 @Getter
 @SuperBuilder
 @NoArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "m_product",
         uniqueConstraints = @UniqueConstraint(name = "uq_m_product_sku", columnNames = "sku"),
