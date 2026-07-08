@@ -7,8 +7,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
-// totalAmount tidak diterima dari client — dihitung server-side sebagai sum(detail.subtotal)
-public record CreateSalesRequest(
+public record CheckoutRequest (
         @NotNull PaymentMethodEnum paymentMethod,
-        @NotNull @NotEmpty List<@Valid SalesDetailRequest> details
+        @NotNull @NotEmpty List<@Valid CheckoutDetailRequest> details
 ) {}
