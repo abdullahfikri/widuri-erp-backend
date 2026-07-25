@@ -1,5 +1,7 @@
 package id.my.mfikriproject.widuri.erp.modules.sales.enums;
 
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
+
 public enum PaymentMethodEnum {
     CASH("Cash"),
     QRIS("QRIS"),
@@ -20,6 +22,6 @@ public enum PaymentMethodEnum {
             if (paymentMethod.getDbValue().equals(dbValue)) return paymentMethod;
         }
 
-        throw new IllegalArgumentException("Unknown payment method stored in database");
+        throw new BusinessRuleException("Unknown payment method stored in database");
     }
 }

@@ -2,6 +2,7 @@ package id.my.mfikriproject.widuri.erp.modules.inventory.service.impl;
 
 import id.my.mfikriproject.widuri.erp.core.context.StoreContext;
 import id.my.mfikriproject.widuri.erp.core.entity.StoreModel;
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductRequest;
@@ -149,10 +150,10 @@ public class ProductServiceImpl implements ProductService {
     private static void validatePriceHierarchy(BigDecimal basePrice, BigDecimal floorPrice,
                                                 BigDecimal labelPrice) {
         if (basePrice.compareTo(floorPrice) > 0) {
-            throw new IllegalArgumentException("basePrice must be <= floorPrice");
+            throw new BusinessRuleException("basePrice must be <= floorPrice");
         }
         if (floorPrice.compareTo(labelPrice) > 0) {
-            throw new IllegalArgumentException("floorPrice must be <= labelPrice");
+            throw new BusinessRuleException("floorPrice must be <= labelPrice");
         }
     }
 }

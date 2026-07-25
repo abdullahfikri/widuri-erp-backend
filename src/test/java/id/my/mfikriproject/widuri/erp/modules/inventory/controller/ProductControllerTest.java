@@ -1,6 +1,7 @@
 package id.my.mfikriproject.widuri.erp.modules.inventory.controller;
 
 import id.my.mfikriproject.widuri.erp.core.config.WebMvcConfig;
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductResponse;
@@ -173,14 +174,14 @@ class ProductControllerTest {
     @Test
     void create_invalidPrices_returns422() {
         given(productService.create(any(CreateProductRequest.class)))
-                .willThrow(new IllegalArgumentException("basePrice must be <= floorPrice"));
+                .willThrow(new BusinessRuleException("basePrice must be <= floorPrice"));
 
         assertThat(mvc.post().uri(URL)
                 .header(STORE_ID_HEADER, "1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"productGroupId\":10,\"skuAttribute\":\"Silver\",\"basePrice\":200.00,\"labelPrice\":300.00,\"floorPrice\":100.00}"))
                 .hasStatus(422)
-                .bodyJson().extractingPath("$.code").asString().isEqualTo("INVALID_INPUT");
+                .bodyJson().extractingPath("$.code").asString().isEqualTo("BUSINESS_RULE_VIOLATION");
     }
 
     @Test
@@ -258,14 +259,14 @@ class ProductControllerTest {
     @Test
     void update_invalidPrices_returns422() {
         given(productService.update(any(Long.class), any(UpdateProductRequest.class)))
-                .willThrow(new IllegalArgumentException("floorPrice must be <= labelPrice"));
+                .willThrow(new BusinessRuleException("floorPrice must be <= labelPrice"));
 
         assertThat(mvc.put().uri(URL + "/1")
                 .header(STORE_ID_HEADER, "1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"basePrice\":100.00,\"labelPrice\":200.00,\"floorPrice\":250.00}"))
                 .hasStatus(422)
-                .bodyJson().extractingPath("$.code").asString().isEqualTo("INVALID_INPUT");
+                .bodyJson().extractingPath("$.code").asString().isEqualTo("BUSINESS_RULE_VIOLATION");
     }
 
     @Test

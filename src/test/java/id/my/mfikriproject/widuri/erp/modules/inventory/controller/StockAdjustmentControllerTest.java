@@ -1,6 +1,7 @@
 package id.my.mfikriproject.widuri.erp.modules.inventory.controller;
 
 import id.my.mfikriproject.widuri.erp.core.config.WebMvcConfig;
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductResponse;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.StockAdjustRequest;
@@ -134,14 +135,14 @@ class StockAdjustmentControllerTest {
     @Test
     void out_insufficientStock_returns422() {
         given(stockAdjustmentService.adjustOut(eq(1L), any(StockAdjustRequest.class)))
-                .willThrow(new IllegalArgumentException("Insufficient stock"));
+                .willThrow(new BusinessRuleException("Insufficient stock"));
 
         assertThat(mvc.post().uri(BASE_URL + "/1/stock/out")
                 .header(STORE_ID_HEADER, "1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"quantity\":100,\"reason\":\"Overcommit\"}"))
                 .hasStatus(422)
-                .bodyJson().extractingPath("$.code").asString().isEqualTo("INVALID_INPUT");
+                .bodyJson().extractingPath("$.code").asString().isEqualTo("BUSINESS_RULE_VIOLATION");
     }
 
     @Test

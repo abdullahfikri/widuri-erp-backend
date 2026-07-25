@@ -1,6 +1,7 @@
 package id.my.mfikriproject.widuri.erp.modules.sales.service.impl;
 
 import id.my.mfikriproject.widuri.erp.core.context.StoreContext;
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductCostSnapshot;
 import id.my.mfikriproject.widuri.erp.modules.inventory.entity.ProductModel;
@@ -95,7 +96,7 @@ class SalesServiceImplTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
                 .call(() -> service.checkout(request)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
 
         verify(stockAdjustmentService, never()).adjustOut(any(), any());
         verify(salesRepository, never()).save(any());
@@ -233,14 +234,14 @@ class SalesServiceImplTest {
         given(productService.getCostSnapshot(1L))
                 .willReturn(new ProductCostSnapshot(1L, new BigDecimal("100.00"), new BigDecimal("150.00")));
         given(stockAdjustmentService.adjustOut(any(), any()))
-                .willThrow(new IllegalArgumentException("Insufficient stock: 0 available, 1 requested"));
+                .willThrow(new BusinessRuleException("Insufficient stock for product 1 (requested: 1)"));
 
         CheckoutRequest request = new CheckoutRequest(PaymentMethodEnum.CASH,
                 List.of(new CheckoutDetailRequest(1L, 1, new BigDecimal("200.00"))));
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
                 .call(() -> service.checkout(request)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
 
         verify(salesRepository, never()).save(any());
         verify(salesDetailRepository, never()).save(any());
@@ -261,7 +262,7 @@ class SalesServiceImplTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
                 .call(() -> service.checkout(request)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
 
         // No partial sale is persisted; item 1's stock deduction relies on @Transactional rollback
         // (verified end-to-end in SalesServiceCheckoutIntegrationTest).
@@ -275,7 +276,7 @@ class SalesServiceImplTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
                 .call(() -> service.checkout(request)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
 
         verify(invoiceNumberGenerator, never()).generate(any(), any());
         verify(stockAdjustmentService, never()).adjustOut(any(), any());
@@ -288,7 +289,7 @@ class SalesServiceImplTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
                 .call(() -> service.checkout(request)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
 
         verify(invoiceNumberGenerator, never()).generate(any(), any());
         verify(stockAdjustmentService, never()).adjustOut(any(), any());
@@ -324,7 +325,7 @@ class SalesServiceImplTest {
         // Item 1 adjustOut succeeds, item 2 adjustOut fails with insufficient stock.
         given(stockAdjustmentService.adjustOut(eq(1L), any())).willReturn(null);
         given(stockAdjustmentService.adjustOut(eq(2L), any()))
-                .willThrow(new IllegalArgumentException("Insufficient stock: 3 available, 5 requested"));
+                .willThrow(new BusinessRuleException("Insufficient stock for product 2 (requested: 5)"));
 
         CheckoutRequest request = new CheckoutRequest(PaymentMethodEnum.CASH, List.of(
                 new CheckoutDetailRequest(1L, 1, new BigDecimal("200.00")),
@@ -333,7 +334,7 @@ class SalesServiceImplTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
                 .call(() -> service.checkout(request)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
 
         // No partial sale is persisted — @Transactional rollback is verified end-to-end
         // in SalesServiceCheckoutIntegrationTest.
@@ -348,7 +349,7 @@ class SalesServiceImplTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
                 .call(() -> service.checkout(request)))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("Quantity must be positive");
 
         // Quantity guard fires before any DB interaction.
@@ -364,7 +365,7 @@ class SalesServiceImplTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
                 .call(() -> service.checkout(request)))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("Quantity must be positive");
 
         // Negative quantity would have added stock if unchecked — guard prevents it.

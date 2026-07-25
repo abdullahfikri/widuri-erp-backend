@@ -2,6 +2,7 @@ package id.my.mfikriproject.widuri.erp.modules.sales.service.impl;
 
 import id.my.mfikriproject.widuri.erp.core.context.StoreContext;
 import id.my.mfikriproject.widuri.erp.modules.sales.dto.CheckoutDetailRequest;
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import id.my.mfikriproject.widuri.erp.modules.sales.dto.CheckoutRequest;
 import id.my.mfikriproject.widuri.erp.modules.sales.dto.CheckoutResponse;
 import id.my.mfikriproject.widuri.erp.modules.sales.enums.PaymentMethodEnum;
@@ -139,7 +140,7 @@ class SalesServiceCheckoutIntegrationTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
                 .call(() -> salesService.checkout(request)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
 
         // Nothing persisted...
         assertThat(count("SELECT count(*) FROM t_sales")).isZero();
@@ -162,7 +163,7 @@ class SalesServiceCheckoutIntegrationTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, STORE_ID)
                 .call(() -> salesService.checkout(request)))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("Insufficient stock");
 
         // Nothing persisted — entire transaction rolled back.

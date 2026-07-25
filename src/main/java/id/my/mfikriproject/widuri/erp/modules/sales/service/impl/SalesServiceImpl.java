@@ -2,6 +2,7 @@ package id.my.mfikriproject.widuri.erp.modules.sales.service.impl;
 
 import id.my.mfikriproject.widuri.erp.core.context.StoreContext;
 import id.my.mfikriproject.widuri.erp.core.entity.StoreModel;
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductCostSnapshot;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.StockAdjustRequest;
@@ -62,7 +63,7 @@ public class SalesServiceImpl implements SalesService {
         StoreContext.assertBound();
 
         if (request.details() == null || request.details().isEmpty()) {
-            throw new IllegalArgumentException("checkout requires at least one item");
+            throw new BusinessRuleException("checkout requires at least one item");
         }
 
         Integer storeId = StoreContext.STORE_ID.get();
@@ -77,7 +78,7 @@ public class SalesServiceImpl implements SalesService {
             // Defense-in-depth: Bean Validation (@Min(1)) catches this at controller,
             // but guard at service level before any DB call.
             if (detailRequest.quantity() <= 0) {
-                throw new IllegalArgumentException(
+                throw new BusinessRuleException(
                         "Quantity must be positive, got: " + detailRequest.quantity());
             }
 
@@ -85,8 +86,8 @@ public class SalesServiceImpl implements SalesService {
 
             // Sales rule: sold price must never fall below the product's floor price.
             if (detailRequest.soldPrice().compareTo(snapshot.floorPrice()) < 0) {
-                throw new IllegalArgumentException("Sold price " + detailRequest.soldPrice()
-                        + " is below floor price " + snapshot.floorPrice());
+                throw new BusinessRuleException("Sold price " + detailRequest.soldPrice()
+                        + " is below the minimum allowed price for product " + detailRequest.productId());
             }
 
             // Decrease stock (adjustOut locks the product row with PESSIMISTIC_WRITE).

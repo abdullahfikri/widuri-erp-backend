@@ -1,5 +1,6 @@
 package id.my.mfikriproject.widuri.erp.modules.sales.service.impl;
 
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import id.my.mfikriproject.widuri.erp.modules.sales.repository.InvoiceSequenceRepository;
 import id.my.mfikriproject.widuri.erp.modules.sales.service.InvoiceNumberGenerator;
 import org.springframework.stereotype.Service;
@@ -18,7 +19,7 @@ public class InvoiceNumberGeneratorImpl implements InvoiceNumberGenerator {
     @Override
     public String generate(Integer storeId, LocalDate date) {
         if (storeId == null || storeId <= 0 || date == null) {
-            throw new IllegalArgumentException("storeId must be a positive integer and date must not be null");
+            throw new BusinessRuleException("storeId must be a positive integer and date must not be null");
         }
 
         int sequence = invoiceSequenceRepository.getNextInvoiceSequence(storeId, date);

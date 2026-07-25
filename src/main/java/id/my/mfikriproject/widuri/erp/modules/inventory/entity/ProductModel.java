@@ -2,6 +2,7 @@ package id.my.mfikriproject.widuri.erp.modules.inventory.entity;
 
 import id.my.mfikriproject.widuri.erp.core.entity.AuditableModel;
 import id.my.mfikriproject.widuri.erp.core.entity.StoreModel;
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -83,8 +84,8 @@ public class ProductModel extends AuditableModel {
     public void subtractStock(int quantity) {
         int current = this.stockQuantity != null ? this.stockQuantity : 0;
         if (current < quantity) {
-            throw new IllegalArgumentException(
-                    "Insufficient stock: " + current + " available, " + quantity + " requested");
+            throw new BusinessRuleException(
+                    "Insufficient stock for product " + this.id + " (requested: " + quantity + ")");
         }
         this.stockQuantity = current - quantity;
     }
