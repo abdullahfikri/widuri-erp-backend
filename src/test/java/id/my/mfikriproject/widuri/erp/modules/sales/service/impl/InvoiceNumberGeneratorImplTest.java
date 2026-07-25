@@ -1,5 +1,6 @@
 package id.my.mfikriproject.widuri.erp.modules.sales.service.impl;
 
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import id.my.mfikriproject.widuri.erp.modules.sales.repository.InvoiceSequenceRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,27 +35,27 @@ class InvoiceNumberGeneratorImplTest {
     }
 
     @Test
-    void generate_storeIdIsNull_throwsIllegalArgumentException() {
+    void generate_storeIdIsNull_throwsBusinessRuleException() {
         assertThatThrownBy(() -> generator.generate(null, LocalDate.of(2026, 6, 13)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
-    void generate_storeIdIsZero_throwsIllegalArgumentException() {
+    void generate_storeIdIsZero_throwsBusinessRuleException() {
         assertThatThrownBy(() -> generator.generate(0, LocalDate.of(2026, 6, 13)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
-    void generate_storeIdIsNegative_throwsIllegalArgumentException() {
+    void generate_storeIdIsNegative_throwsBusinessRuleException() {
         assertThatThrownBy(() -> generator.generate(-1, LocalDate.of(2026, 6, 13)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
-    void generate_dateIsNull_throwsIllegalArgumentException() {
+    void generate_dateIsNull_throwsBusinessRuleException() {
         assertThatThrownBy(() -> generator.generate(1, null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test

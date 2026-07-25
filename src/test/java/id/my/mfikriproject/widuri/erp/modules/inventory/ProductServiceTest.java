@@ -2,6 +2,7 @@ package id.my.mfikriproject.widuri.erp.modules.inventory;
 
 import id.my.mfikriproject.widuri.erp.core.context.StoreContext;
 import id.my.mfikriproject.widuri.erp.core.entity.StoreModel;
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.CreateProductRequest;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductResponse;
@@ -245,7 +246,7 @@ class ProductServiceTest {
     }
 
     @Test
-    void create_baseGtFloor_throwsIllegalArgumentException() {
+    void create_baseGtFloor_throwsBusinessRuleException() {
         CreateProductRequest request = new CreateProductRequest(10L, "Silver", null,
                 new BigDecimal("200.00"), new BigDecimal("300.00"),
                 new BigDecimal("150.00"), 5);
@@ -257,11 +258,11 @@ class ProductServiceTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, 1)
                 .call(() -> service.create(request)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
-    void create_floorGtLabel_throwsIllegalArgumentException() {
+    void create_floorGtLabel_throwsBusinessRuleException() {
         CreateProductRequest request = new CreateProductRequest(10L, "Silver", null,
                 new BigDecimal("100.00"), new BigDecimal("200.00"),
                 new BigDecimal("250.00"), 5);
@@ -273,7 +274,7 @@ class ProductServiceTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, 1)
                 .call(() -> service.create(request)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
@@ -416,7 +417,7 @@ class ProductServiceTest {
     }
 
     @Test
-    void update_invalidPriceHierarchy_throwsIllegalArgumentException() {
+    void update_invalidPriceHierarchy_throwsBusinessRuleException() {
         UpdateProductRequest request = new UpdateProductRequest(null,
                 new BigDecimal("200.00"), new BigDecimal("300.00"),
                 new BigDecimal("350.00"), null);
@@ -425,7 +426,7 @@ class ProductServiceTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, 1)
                 .call(() -> service.update(1L, request)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     // --- delete ---

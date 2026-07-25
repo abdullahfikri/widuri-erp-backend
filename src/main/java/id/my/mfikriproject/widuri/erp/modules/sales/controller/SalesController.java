@@ -1,5 +1,6 @@
 package id.my.mfikriproject.widuri.erp.modules.sales.controller;
 
+import id.my.mfikriproject.widuri.erp.core.web.PageResponse;
 import id.my.mfikriproject.widuri.erp.modules.sales.dto.CheckoutRequest;
 import id.my.mfikriproject.widuri.erp.modules.sales.dto.CheckoutResponse;
 import id.my.mfikriproject.widuri.erp.modules.sales.dto.SalesDetailResponse;
@@ -45,12 +46,15 @@ public class SalesController {
      * {@code page}, {@code size} (default 20), {@code sort}.
      */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Page<SalesSummaryResponse>> getHistory(
+    @ResponseStatus(HttpStatus.OK)
+    public PageResponse<SalesSummaryResponse> getHistory(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @PageableDefault(size = 20, sort = "transactionDate", direction = Sort.Direction.DESC)
             Pageable pageable) {
-        return ResponseEntity.ok(salesService.getHistory(from, to, pageable));
+        Page<SalesSummaryResponse> responsePage = salesService.getHistory(from, to, pageable);
+
+        return PageResponse.from(responsePage);
     }
 
     /**

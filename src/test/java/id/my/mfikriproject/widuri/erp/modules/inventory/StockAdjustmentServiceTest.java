@@ -1,6 +1,7 @@
 package id.my.mfikriproject.widuri.erp.modules.inventory;
 
 import id.my.mfikriproject.widuri.erp.core.context.StoreContext;
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.ProductResponse;
 import id.my.mfikriproject.widuri.erp.modules.inventory.dto.StockAdjustRequest;
@@ -130,10 +131,10 @@ class StockAdjustmentServiceTest {
     }
 
     @Test
-    void adjustOut_insufficientStock_throwsIllegalArgumentException() {
+    void adjustOut_insufficientStock_throwsBusinessRuleException() {
         StockAdjustRequest request = new StockAdjustRequest(20, "Overcommit");
         ProductModel product = mock(ProductModel.class);
-        doThrow(new IllegalArgumentException("Insufficient stock: 5 available, 20 requested"))
+        doThrow(new BusinessRuleException("Insufficient stock for product 1 (requested: 20)"))
                 .when(product).subtractStock(20);
         given(productRepository.findByIdAndStoreModelIdForUpdate(1L, 1))
                 .willReturn(Optional.of(product));
@@ -144,7 +145,7 @@ class StockAdjustmentServiceTest {
 
         assertThatThrownBy(() -> ScopedValue.where(StoreContext.STORE_ID, 1)
                 .call(() -> service.adjustOut(1L, request)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
@@ -171,8 +172,8 @@ class StockAdjustmentServiceTest {
     void subtractStock_nullStockQuantity_treatsAsZero() {
         ProductModel product = new ProductModel();
         assertThatThrownBy(() -> product.subtractStock(5))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Insufficient stock: 0 available");
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Insufficient stock for product null");
     }
 
     // --- helper ---
@@ -203,8 +204,8 @@ class StockAdjustmentServiceTest {
         doAnswer(inv -> {
             int qty = inv.getArgument(0);
             if (stockQuantity < qty) {
-                throw new IllegalArgumentException(
-                        "Insufficient stock: " + stockQuantity + " available, " + qty + " requested");
+                throw new BusinessRuleException(
+                        "Insufficient stock for product " + product.getId() + " (requested: " + qty + ")");
             }
             given(product.getStockQuantity()).willReturn(stockQuantity - qty);
             return null;

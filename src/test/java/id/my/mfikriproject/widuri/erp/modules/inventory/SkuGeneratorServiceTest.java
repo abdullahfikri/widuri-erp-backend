@@ -1,5 +1,6 @@
 package id.my.mfikriproject.widuri.erp.modules.inventory;
 
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import id.my.mfikriproject.widuri.erp.modules.inventory.repository.SkuRepository;
 import id.my.mfikriproject.widuri.erp.modules.inventory.service.impl.SkuGeneratorServiceImpl;
 import org.junit.jupiter.api.Test;
@@ -77,39 +78,39 @@ class SkuGeneratorServiceTest {
     }
 
     @Test
-    void generate_brandIsNull_throwsIllegalArgumentException() {
+    void generate_brandIsNull_throwsBusinessRuleException() {
         assertThatThrownBy(() -> service.generate(null, "Reel", "Silver"))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
-    void generate_categoryIsNull_throwsIllegalArgumentException() {
+    void generate_categoryIsNull_throwsBusinessRuleException() {
         assertThatThrownBy(() -> service.generate("Shimano", null, "Silver"))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
-    void generate_attributeIsNull_throwsIllegalArgumentException() {
+    void generate_attributeIsNull_throwsBusinessRuleException() {
         assertThatThrownBy(() -> service.generate("Shimano", "Reel", null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
-    void generate_brandIsBlank_throwsIllegalArgumentException() {
+    void generate_brandIsBlank_throwsBusinessRuleException() {
         assertThatThrownBy(() -> service.generate("   ", "Reel", "Silver"))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
-    void generate_categoryIsBlank_throwsIllegalArgumentException() {
+    void generate_categoryIsBlank_throwsBusinessRuleException() {
         assertThatThrownBy(() -> service.generate("Shimano", "", "Silver"))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
-    void generate_attributeIsBlank_throwsIllegalArgumentException() {
+    void generate_attributeIsBlank_throwsBusinessRuleException() {
         assertThatThrownBy(() -> service.generate("Shimano", "Reel", "   "))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test

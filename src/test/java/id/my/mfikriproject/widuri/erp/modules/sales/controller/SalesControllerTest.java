@@ -103,6 +103,18 @@ class SalesControllerTest {
         assertThat(result).bodyJson()
                 .extractingPath("$.content[0].invoiceNumber").asString()
                 .isEqualTo("INV-01-20260708-0001");
+        assertThat(result).bodyJson()
+                .extractingPath("$.pagination.page").asNumber().isEqualTo(0);
+        assertThat(result).bodyJson()
+                .extractingPath("$.pagination.size").asNumber().isEqualTo(1);
+        assertThat(result).bodyJson()
+                .extractingPath("$.pagination.totalElements").asNumber().isEqualTo(1);
+        assertThat(result).bodyJson()
+                .extractingPath("$.pagination.totalPages").asNumber().isEqualTo(1);
+        assertThat(result).bodyJson()
+                .extractingPath("$.pagination.first").asBoolean().isTrue();
+        assertThat(result).bodyJson()
+                .extractingPath("$.pagination.last").asBoolean().isTrue();
     }
 
     @Test

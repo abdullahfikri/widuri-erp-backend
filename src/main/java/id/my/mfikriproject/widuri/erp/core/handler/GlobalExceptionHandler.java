@@ -1,6 +1,7 @@
 package id.my.mfikriproject.widuri.erp.core.handler;
 
 import id.my.mfikriproject.widuri.erp.core.dto.ErrorResponse;
+import id.my.mfikriproject.widuri.erp.core.exception.BusinessRuleException;
 import id.my.mfikriproject.widuri.erp.core.exception.DuplicateEntityException;
 import id.my.mfikriproject.widuri.erp.core.exception.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +54,13 @@ public class GlobalExceptionHandler {
     public ErrorResponse handleIllegalArgument(IllegalArgumentException ex) {
         // Pesan error sengaja tidak menyertakan ex.getMessage() — bisa mengandung nilai raw dari DB
         return ErrorResponse.of(INVALID_INPUT_CODE, "Request contains invalid or unprocessable data");
+    }
+
+    @ExceptionHandler(BusinessRuleException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
+    public ErrorResponse handleBusinessRule(BusinessRuleException ex) {
+        // ex.getMessage() diteruskan by design — kontrak BusinessRuleException menjamin pesannya aman untuk client
+        return ErrorResponse.of("BUSINESS_RULE_VIOLATION", ex.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
